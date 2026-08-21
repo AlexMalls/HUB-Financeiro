@@ -71,6 +71,36 @@ public static class ContextoTemporalServiceTestes
             return r.ComparacaoOriginal.ValorFatura == 100m && r.ComparacaoOriginal.ValorOverComparavel == 90m && r.ComparacaoOriginal.DiferencaFaturaMenosOver == 10m;
         });
 
+        Executar(testes, "histórico legado reconstrói fatura líquida e diferença residual", () =>
+        {
+            DateTime competencia = new(2026, 6, 1);
+            var resultadoLegado = new AnaliseFinalResultado
+            {
+                Competencia = competencia,
+                ValorFatura = 3923.69m,
+                ValorOver = 40.52m,
+                Diferenca = 3883.17m,
+                // VersaoCalculo 0 representa o formato exibido na imagem do erro.
+                ContextoTemporal = new ContextoTemporalResultado
+                {
+                    Evidencias = new[]
+                    {
+                        Evidencia(new DateTime(2026, 7, 1), new DateTime(2026, 7, 1), "", 3923.69m),
+                        Evidencia(new DateTime(2026, 8, 1), new DateTime(2026, 8, 1), "", 3923.69m),
+                        Evidencia(new DateTime(2026, 8, 1), new DateTime(2026, 8, 1), "CM", -3923.69m),
+                        Evidencia(new DateTime(2026, 8, 1), new DateTime(2026, 7, 1), "CR", -3923.69m),
+                        Evidencia(new DateTime(2026, 8, 1), competencia, "CR", -1961.84m)
+                    }
+                }
+            };
+
+            AnaliseFaturasVisaoFinanceira visao = AnaliseFaturasVisaoFinanceiraService.Calcular(resultadoLegado);
+            return visao.ReconstruidaDeHistoricoLegado &&
+                   visao.AjusteContexto == -1961.84m &&
+                   visao.ValorFaturaLiquida == 1961.85m &&
+                   visao.DiferencaResidual == 1921.33m;
+        });
+
         return testes;
     }
 
@@ -120,4 +150,21 @@ public static class ContextoTemporalServiceTestes
         arquivo.Subfaturas.Add(sub);
         return arquivo;
     }
+
+    private static ContextoTemporalEvidencia Evidencia(
+        DateTime competenciaFatura,
+        DateTime competenciaLancamento,
+        string movimento,
+        decimal valor)
+        => new()
+        {
+            CompetenciaFatura = competenciaFatura,
+            CompetenciaLancamento = competenciaLancamento,
+            Movimento = movimento,
+            Valor = valor,
+            Arquivo = $"fat_{competenciaFatura:yyyyMM}.pdf",
+            PaginaPdf = 5,
+            Subfatura = 20,
+            Entidade = "CREMESP"
+        };
 }

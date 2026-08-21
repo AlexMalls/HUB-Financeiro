@@ -435,12 +435,14 @@ public partial class ResultadoAnaliseFaturasWindow : Window
 
         public LinhaResultado(AnaliseFinalResultado original, Action aoAlterarExplicacao)
         {
+            AnaliseFaturasVisaoFinanceira visaoFinanceira = AnaliseFaturasVisaoFinanceiraService.Calcular(original);
+
             Original = original;
             Beneficiario = Vazio(original.Beneficiario);
             Certificado = Vazio(original.Certificado);
             TipoDivergencia = original.TipoDivergencia;
-            Diferenca = FormatarValor(original.Diferenca);
-            ValorFatura = FormatarValor(original.ValorFatura);
+            Diferenca = FormatarValor(visaoFinanceira.DiferencaResidual);
+            ValorFatura = FormatarValor(visaoFinanceira.ValorFaturaLiquida);
             ValorOver = FormatarValor(original.ValorOver);
             Entidade = Vazio(original.Entidade);
             Competencia = original.Competencia.ToString("MM/yyyy");
@@ -448,7 +450,9 @@ public partial class ResultadoAnaliseFaturasWindow : Window
                 ? "Divergência"
                 : AnaliseFinalService.TraduzirStatus(original.Status);
             RegraExplicativa = string.IsNullOrWhiteSpace(original.RegraExplicativa) ? "—" : original.RegraExplicativa;
-            Justificativa = original.JustificativaFinal;
+            Justificativa = visaoFinanceira.ReconstruidaDeHistoricoLegado
+                ? visaoFinanceira.CriarResumo(original.ValorFatura, original.ValorOver)
+                : original.JustificativaFinal;
             _explicacaoManual = original.JustificativaManual ?? string.Empty;
             _aoAlterarExplicacao = aoAlterarExplicacao;
         }

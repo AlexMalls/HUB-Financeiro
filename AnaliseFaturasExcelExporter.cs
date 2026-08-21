@@ -153,7 +153,7 @@ public sealed class AnaliseFaturasExcelExporter
             "Entidade",
             "Competência",
             "Diferença",
-            "Valor Fatura",
+            "Fatura líquida",
             "Valor no Over",
             "Explicação",
             "Justificativa"
@@ -176,15 +176,19 @@ public sealed class AnaliseFaturasExcelExporter
         int linha = primeiraLinhaDados;
         foreach (AnaliseFinalResultado item in itens)
         {
+            AnaliseFaturasVisaoFinanceira visaoFinanceira = AnaliseFaturasVisaoFinanceiraService.Calcular(item);
+
             ws.Cell(linha, 1).Value = item.Beneficiario;
             ws.Cell(linha, 2).Value = item.Certificado;
             ws.Cell(linha, 3).Value = item.Entidade;
             ws.Cell(linha, 4).Value = item.Competencia;
-            if (item.Diferenca.HasValue) ws.Cell(linha, 5).Value = item.Diferenca.Value;
-            if (item.ValorFatura.HasValue) ws.Cell(linha, 6).Value = item.ValorFatura.Value;
+            if (visaoFinanceira.DiferencaResidual.HasValue) ws.Cell(linha, 5).Value = visaoFinanceira.DiferencaResidual.Value;
+            if (visaoFinanceira.ValorFaturaLiquida.HasValue) ws.Cell(linha, 6).Value = visaoFinanceira.ValorFaturaLiquida.Value;
             if (item.ValorOver.HasValue) ws.Cell(linha, 7).Value = item.ValorOver.Value;
             ws.Cell(linha, 8).Value = item.JustificativaManual;
-            ws.Cell(linha, 9).Value = item.JustificativaFinal;
+            ws.Cell(linha, 9).Value = visaoFinanceira.ReconstruidaDeHistoricoLegado
+                ? visaoFinanceira.CriarResumo(item.ValorFatura, item.ValorOver)
+                : item.JustificativaFinal;
 
             if (!string.IsNullOrWhiteSpace(item.JustificativaManual))
                 ws.Range(linha, 1, linha, totalColunas).Style.Fill.BackgroundColor = CorLinhaJustificada;
@@ -221,7 +225,7 @@ public sealed class AnaliseFaturasExcelExporter
         ws.Column(3).Width = 27.86; // C - Entidade: 200 px
         ws.Column(4).Width = 19.29; // D - Competência: 140 px
         ws.Column(5).Width = 15;    // E - Diferença
-        ws.Column(6).Width = 15;    // F - Valor Fatura
+        ws.Column(6).Width = 15;    // F - Fatura líquida
         ws.Column(7).Width = 15;    // G - Valor no Over
         ws.Column(8).Width = 34;    // H - Explicação manual
         ws.Column(9).Width = 77.86; // I - Justificativa: 550 px
