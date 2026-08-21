@@ -213,24 +213,12 @@ public static class RegrasAnaliseServiceTestes
                    r.Justificativa.Contains("independentemente do valor", StringComparison.OrdinalIgnoreCase);
         });
 
-        Testar(testes, "Checkbox sem cancelamento no Over mantém a Divergência", () =>
-        {
-            RegraAnaliseContexto contexto = CriarCasoCancelamento(
-                ignorarClientesCancelados: true,
-                valorDevolucaoBradesco: -1000m,
-                incluirCancelamentoOver: false);
-
-            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
-            return !r.SinalizaAtencao && r.Resultado == RegraAnaliseStatus.RevisaoManual;
-        });
-
-        Testar(testes, "Over vinculado zerado com devolução posterior vai para Atenção", () =>
+        Testar(testes, "Checkbox com devolução posterior dispensa cancelamento no Over", () =>
         {
             RegraAnaliseContexto contexto = CriarCasoCancelamento(
                 ignorarClientesCancelados: true,
                 valorDevolucaoBradesco: -919.81m,
-                incluirCancelamentoOver: false,
-                incluirOverZerado: true);
+                incluirCancelamentoOver: false);
 
             RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
             return r.SinalizaAtencao &&
@@ -302,8 +290,7 @@ public static class RegrasAnaliseServiceTestes
     private static RegraAnaliseContexto CriarCasoCancelamento(
         bool ignorarClientesCancelados,
         decimal valorDevolucaoBradesco,
-        bool incluirCancelamentoOver,
-        bool incluirOverZerado = false)
+        bool incluirCancelamentoOver)
     {
         var comparacao = new ComparacaoPrincipalResultado
         {
@@ -312,7 +299,7 @@ public static class RegrasAnaliseServiceTestes
             NomeFatura = "CLIENTE CANCELADA",
             Categoria = ComparacaoPrincipalCategoria.ValorMaiorNaFatura,
             ValorFatura = 3923.69m,
-            ValorOverComparavel = incluirOverZerado ? 0m : 40.52m,
+            ValorOverComparavel = 40.52m,
             DiferencaFaturaMenosOver = 3883.17m
         };
 
@@ -328,18 +315,6 @@ public static class RegrasAnaliseServiceTestes
                     Natureza = "Evento 007"
                 }
             }
-            : incluirOverZerado
-                ? new[]
-                {
-                    new ComponenteOver
-                    {
-                        NumeroLinha = 106,
-                        Evento = "0021",
-                        Descricao = "PLANO CANCELADO COM VALOR ZERADO",
-                        ValorNET = 0m,
-                        Natureza = "Evento 0021"
-                    }
-                }
             : Array.Empty<ComponenteOver>();
 
         return new RegraAnaliseContexto
