@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -55,14 +57,13 @@ public partial class DetalheAnaliseFaturasWindow : Window
             ValoresText.Text = $"Fatura {Fmt(_resultado.ValorFatura)}  •  Over {Fmt(_resultado.ValorOver)}  •  Divergência {Fmt(_resultado.Diferenca)}";
         }
 
-        RegraAnaliseResultado? devolucao = _resultado.RegrasTestadas.FirstOrDefault(x =>
-            x.ValorDevolucao.HasValue && x.DiasEquivalentesDevolucao.HasValue);
-        if (devolucao != null)
+        bool possuiDevolucao = TentarObterDevolucaoResumida(out decimal valorDevolucao, out int diasDevolucao);
+        BreveExplicacaoText.Text = CriarBreveExplicacao(possuiDevolucao);
+        if (possuiDevolucao)
         {
-            int dias = devolucao.DiasEquivalentesDevolucao!.Value;
             ResumoDevolucaoText.Text =
-                $"Devolução da Bradesco: R$ {devolucao.ValorDevolucao!.Value:N2}, equivalente a {dias} {(dias == 1 ? "dia" : "dias")}.";
-            ResumoDevolucaoCard.Visibility = Visibility.Visible;
+                $"Devolução da Bradesco: R$ {valorDevolucao:N2}, equivalente a {diasDevolucao} {(diasDevolucao == 1 ? "dia" : "dias")}.";
+            ResumoDevolucaoText.Visibility = Visibility.Visible;
         }
 
         OrigemFaturaText.Text = string.IsNullOrWhiteSpace(_resultado.OrigemFatura) ? "—" : _resultado.OrigemFatura;
@@ -318,6 +319,72 @@ public partial class DetalheAnaliseFaturasWindow : Window
 
     private static string VazioComoTraco(string? texto)
         => string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
+
+    private string CriarBreveExplicacao(bool possuiDevolucao)
+    {
+        if (_resultado.Status == AnaliseFinalStatus.Compativel)
+            return "Os valores da fatura e do Over estão compatíveis.";
+
+        if (_resultado.Status == AnaliseFinalStatus.Ambiguo)
+            return "O vínculo entre a fatura e o Over precisa de conferência manual.";
+
+        decimal? diferenca = _visaoFinanceira.DiferencaResidual ?? _resultado.Diferenca;
+        if (possuiDevolucao && diferenca > 0m)
+            return "Mesmo após a devolução, permanece divergência porque a fatura líquida está acima do Over.";
+
+        if (possuiDevolucao && diferenca < 0m)
+            return "Mesmo após a devolução, permanece divergência porque o Over está acima da fatura líquida.";
+
+        if (diferenca > 0m)
+            return "Permanece divergência porque a fatura está acima do Over.";
+
+        if (diferenca < 0m)
+            return "Permanece divergência porque o Over está acima da fatura.";
+
+        return "A ocorrência precisa de conferência manual.";
+    }
+
+    private bool TentarObterDevolucaoResumida(out decimal valor, out int dias)
+    {
+        RegraAnaliseResultado? estruturada = _resultado.RegrasTestadas.FirstOrDefault(x =>
+            x.ValorDevolucao.HasValue && x.DiasEquivalentesDevolucao.HasValue);
+        if (estruturada != null)
+        {
+            valor = estruturada.ValorDevolucao!.Value;
+            dias = estruturada.DiasEquivalentesDevolucao!.Value;
+            return true;
+        }
+
+        string textoLegado = string.Join(
+            " ",
+            _resultado.RegrasTestadas.Select(x => $"{x.DadosUtilizados} {x.Justificativa}")) +
+            " " + (_resultado.JustificativaFinal ?? string.Empty);
+
+        Match valorMatch = Regex.Match(
+            textoLegado,
+            @"(?:devolução\s+R\$|devolução\s+encontrada:\s*R\$)\s*(?<valor>[\d.,]+)",
+            RegexOptions.IgnoreCase);
+        Match diasMatch = Regex.Match(
+            textoLegado,
+            @"(?:dias\s+equivalentes\s+|equivale\s+financeiramente\s+a\s+)(?<dias>\d+)",
+            RegexOptions.IgnoreCase);
+
+        if (valorMatch.Success &&
+            diasMatch.Success &&
+            decimal.TryParse(
+                valorMatch.Groups["valor"].Value,
+                NumberStyles.Number,
+                CultureInfo.GetCultureInfo("pt-BR"),
+                out valor) &&
+            int.TryParse(diasMatch.Groups["dias"].Value, out dias))
+        {
+            return true;
+        }
+
+        valor = 0m;
+        dias = 0;
+        return false;
+    }
 
     private sealed class LinhaFaturaDetalhe
     {
