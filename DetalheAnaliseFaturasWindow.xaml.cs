@@ -114,14 +114,14 @@ public partial class DetalheAnaliseFaturasWindow : Window
             ContextoDataGrid.ItemsSource = _resultado.ContextoTemporal.Evidencias.Select(x => new LinhaContextoDetalhe
             {
                 CompetenciaFatura = x.CompetenciaFatura.ToString("MM/yyyy"),
-                x.Arquivo,
-                x.Subfatura,
+                Arquivo = x.Arquivo,
+                Subfatura = x.Subfatura,
                 Pagina = x.PaginaPdf,
                 PaginaPdfNumero = x.PaginaPdf,
-                x.Movimento,
+                Movimento = x.Movimento,
                 CompetenciaLancamento = x.CompetenciaLancamento.ToString("MM/yyyy"),
                 Valor = x.Valor.ToString("N2"),
-                x.Entidade
+                Entidade = x.Entidade
             }).ToList();
         }
     }
