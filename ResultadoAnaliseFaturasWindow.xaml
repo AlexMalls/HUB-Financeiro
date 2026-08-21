@@ -272,6 +272,41 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="ExplanationIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="25"/>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Background" Value="#302936"/>
+            <Setter Property="Foreground" Value="#C99AF4"/>
+            <Setter Property="BorderBrush" Value="#68417F"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="IconBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="IconBorder" Property="Background" Value="#493154"/>
+                                <Setter TargetName="IconBorder" Property="BorderBrush" Value="#9D5BC4"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border Background="{StaticResource BackgroundDark}" BorderBrush="#45454C" BorderThickness="1" CornerRadius="12" SnapsToDevicePixels="True">
@@ -382,7 +417,7 @@
                 </StackPanel>
 
                 <Border Grid.Row="6" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" Padding="1">
-                    <DataGrid x:Name="ResultadosDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="33" ColumnHeaderHeight="33" EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectedCellsChanged="ResultadosDataGrid_SelectedCellsChanged" BeginningEdit="ResultadosDataGrid_BeginningEdit" CellEditEnding="ResultadosDataGrid_CellEditEnding" MouseDoubleClick="ResultadosDataGrid_MouseDoubleClick">
+                    <DataGrid x:Name="ResultadosDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="33" ColumnHeaderHeight="33" EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectedCellsChanged="ResultadosDataGrid_SelectedCellsChanged" MouseDoubleClick="ResultadosDataGrid_MouseDoubleClick">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Beneficiário" Binding="{Binding Beneficiario}" Width="250" IsReadOnly="True" />
                             <DataGridTextColumn Header="Certificado" Binding="{Binding Certificado}" Width="110" IsReadOnly="True" />
@@ -393,18 +428,40 @@
                             <DataGridTextColumn Header="Entidade" Binding="{Binding Entidade}" Width="140" IsReadOnly="True" />
                             <DataGridTextColumn Header="Competência" Binding="{Binding Competencia}" Width="95" IsReadOnly="True" />
                             <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="105" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Explicação" Binding="{Binding ExplicacaoManual, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="260" IsReadOnly="False">
-                                <DataGridTextColumn.EditingElementStyle>
-                                    <Style TargetType="TextBox">
-                                        <Setter Property="Background" Value="#25252A" />
-                                        <Setter Property="Foreground" Value="White" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}" />
-                                        <Setter Property="BorderThickness" Value="1" />
-                                        <Setter Property="Padding" Value="6,3" />
-                                        <Setter Property="SelectionBrush" Value="#7A3FA0" />
-                                    </Style>
-                                </DataGridTextColumn.EditingElementStyle>
-                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="Explicação" Width="260" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding ExplicacaoManual}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding ExplicacaoManual}"/>
+                                            <Button Grid.Column="1"
+                                                    Style="{StaticResource ExplanationIconButtonStyle}"
+                                                    IsEnabled="{Binding PodeEditarExplicacao}"
+                                                    ToolTip="Editar explicação"
+                                                    Click="EditarExplicacao_Click">
+                                                <Viewbox Width="14" Height="14" IsHitTestVisible="False">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Data="M4,16 L4,20 L8,20 L19,9 L15,5 Z M14,6 L18,10 M4,20 L8,18"
+                                                              Fill="Transparent"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                                                              StrokeThickness="1.8"
+                                                              StrokeStartLineCap="Round"
+                                                              StrokeEndLineCap="Round"
+                                                              StrokeLineJoin="Round"/>
+                                                    </Canvas>
+                                                </Viewbox>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Justificativa" Binding="{Binding Justificativa}" Width="420" IsReadOnly="True" />
                         </DataGrid.Columns>
                     </DataGrid>
