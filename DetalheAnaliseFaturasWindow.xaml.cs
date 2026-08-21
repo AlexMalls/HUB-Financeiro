@@ -34,12 +34,6 @@ public partial class DetalheAnaliseFaturasWindow : Window
             : AnaliseFinalService.TraduzirStatus(_resultado.Status);
         BeneficiarioText.Text = _resultado.Beneficiario;
         SubtituloText.Text = $"{_resultado.Certificado}  •  {_resultado.TipoDivergencia}  •  {_resultado.Competencia:MM/yyyy}";
-        string justificativaFinanceira = _visaoFinanceira.ReconstruidaDeHistoricoLegado
-            ? _visaoFinanceira.CriarResumo(_resultado.ValorFatura, _resultado.ValorOver)
-            : _resultado.JustificativaFinal;
-        JustificativaText.Text = string.IsNullOrWhiteSpace(_resultado.JustificativaManual)
-            ? justificativaFinanceira
-            : $"Explicação manual: {_resultado.JustificativaManual}\n{justificativaFinanceira}";
         StatusText.Text = status;
         StatusText.Foreground = _resultado.Status switch
         {
@@ -52,17 +46,25 @@ public partial class DetalheAnaliseFaturasWindow : Window
         if (_visaoFinanceira.PossuiAjusteContexto && _visaoFinanceira.DiferencaOriginal.HasValue)
         {
             ValoresText.Text =
-                $"Fatura {Fmt(_resultado.ValorFatura)}  •  Over {Fmt(_resultado.ValorOver)}  •  " +
-                $"Dif. original {Fmt(_visaoFinanceira.DiferencaOriginal)}  •  " +
-                $"Ajustes {_visaoFinanceira.AjusteContexto:N2}  •  " +
                 $"Fatura líquida {Fmt(_visaoFinanceira.ValorFaturaLiquida)}  •  " +
-                $"Diferença residual {Fmt(_visaoFinanceira.DiferencaResidual)}";
+                $"Over {Fmt(_resultado.ValorOver)}  •  " +
+                $"Divergência {Fmt(_visaoFinanceira.DiferencaResidual)}";
         }
         else
         {
-            ValoresText.Text =
-                $"Fatura {Fmt(_resultado.ValorFatura)}  •  Over {Fmt(_resultado.ValorOver)}  •  Diferença {Fmt(_resultado.Diferenca)}";
+            ValoresText.Text = $"Fatura {Fmt(_resultado.ValorFatura)}  •  Over {Fmt(_resultado.ValorOver)}  •  Divergência {Fmt(_resultado.Diferenca)}";
         }
+
+        RegraAnaliseResultado? devolucao = _resultado.RegrasTestadas.FirstOrDefault(x =>
+            x.ValorDevolucao.HasValue && x.DiasEquivalentesDevolucao.HasValue);
+        if (devolucao != null)
+        {
+            int dias = devolucao.DiasEquivalentesDevolucao!.Value;
+            ResumoDevolucaoText.Text =
+                $"Devolução da Bradesco: R$ {devolucao.ValorDevolucao!.Value:N2}, equivalente a {dias} {(dias == 1 ? "dia" : "dias")}.";
+            ResumoDevolucaoCard.Visibility = Visibility.Visible;
+        }
+
         OrigemFaturaText.Text = string.IsNullOrWhiteSpace(_resultado.OrigemFatura) ? "—" : _resultado.OrigemFatura;
         OrigemOverText.Text = string.IsNullOrWhiteSpace(_resultado.OrigemOver) ? "—" : _resultado.OrigemOver;
 
