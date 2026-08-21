@@ -243,8 +243,10 @@ public sealed class AnaliseFaturasHistoricoService
         DateTime competencia = new(snapshot.Competencia.Year, snapshot.Competencia.Month, 1);
         string pastaDestino = ObterPastaAnalise(competencia);
         string destino = ObterCaminhoRegistro(snapshot.Competencia);
-        string pastaTemporaria = Path.Combine(_pastaHistorico, $".__analise_{Guid.NewGuid():N}.tmp");
-        string pastaAnterior = Path.Combine(_pastaHistorico, $".__analise_anterior_{Guid.NewGuid():N}.tmp");
+        // Nomes curtos reduzem o risco de ultrapassar limites de caminho nas pastas
+        // sincronizadas pelo OneDrive, cuja raiz já costuma ser extensa.
+        string pastaTemporaria = Path.Combine(_pastaHistorico, $".__new_{Guid.NewGuid():N}");
+        string pastaAnterior = Path.Combine(_pastaHistorico, $".__old_{Guid.NewGuid():N}");
         string legado = ObterCaminhoRegistroLegado(competencia);
         bool pastaAnteriorMovida = false;
         bool pastaNovaMovida = false;
@@ -274,8 +276,11 @@ public sealed class AnaliseFaturasHistoricoService
             if (File.Exists(legado))
                 File.Delete(legado);
 
+            // A análise nova já está ativa neste ponto. Arquivos da pasta anterior podem
+            // estar temporariamente bloqueados pelo OneDrive, Edge, Excel ou antivírus;
+            // uma falha nessa limpeza não pode desfazer o salvamento recém-concluído.
             if (pastaAnteriorMovida && Directory.Exists(pastaAnterior))
-                Directory.Delete(pastaAnterior, recursive: true);
+                TentarExcluirDiretorio(pastaAnterior);
 
             string caminhoRelativo = Path.GetRelativePath(_pastaHistorico, destino);
             try
@@ -564,6 +569,33 @@ public sealed class AnaliseFaturasHistoricoService
             string destinoTemporario = Path.Combine(pastaGrupoTemporaria, arquivo.NomeArquivo);
             File.Copy(origem, destinoTemporario, overwrite: false);
             arquivo.CaminhoArquivado = Path.Combine(pastaGrupoFinal, arquivo.NomeArquivo);
+        }
+    }
+
+    private static void TentarExcluirDiretorio(string caminho)
+    {
+        try
+        {
+            foreach (string arquivo in Directory.EnumerateFiles(caminho, "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    FileAttributes atributos = File.GetAttributes(arquivo);
+                    if ((atributos & FileAttributes.ReadOnly) != 0)
+                        File.SetAttributes(arquivo, atributos & ~FileAttributes.ReadOnly);
+                }
+                catch
+                {
+                    // Continua tentando excluir o restante do backup.
+                }
+            }
+
+            Directory.Delete(caminho, recursive: true);
+        }
+        catch
+        {
+            // OneDrive ou um visualizador pode manter algum arquivo bloqueado.
+            // A pasta começa com ".__" e é ignorada pela listagem do histórico.
         }
     }
 
