@@ -21,6 +21,8 @@ public sealed class RegraAnaliseResultado
     public string Justificativa { get; init; } = string.Empty;
     public IReadOnlyList<string> Evidencias { get; init; } = Array.Empty<string>();
     public bool SinalizaAtencao { get; init; }
+    public decimal? ValorDevolucao { get; init; }
+    public int? DiasEquivalentesDevolucao { get; init; }
 
     public bool ExplicaDivergencia => Resultado == RegraAnaliseStatus.Explicada;
 }
@@ -103,8 +105,21 @@ internal abstract class RegraAnaliseBase : IRegraAnalise
     protected RegraAnaliseResultado Evidencia(string condicao, string dados, string justificativa, IEnumerable<string> evidencias)
         => Resultado(RegraAnaliseStatus.EvidenciaEncontrada, condicao, dados, justificativa, evidencias);
 
-    protected RegraAnaliseResultado Revisao(string condicao, string dados, string justificativa, IEnumerable<string> evidencias)
-        => Resultado(RegraAnaliseStatus.RevisaoManual, condicao, dados, justificativa, evidencias);
+    protected RegraAnaliseResultado Revisao(
+        string condicao,
+        string dados,
+        string justificativa,
+        IEnumerable<string> evidencias,
+        decimal? valorDevolucao = null,
+        int? diasEquivalentesDevolucao = null)
+        => Resultado(
+            RegraAnaliseStatus.RevisaoManual,
+            condicao,
+            dados,
+            justificativa,
+            evidencias,
+            valorDevolucao: valorDevolucao,
+            diasEquivalentesDevolucao: diasEquivalentesDevolucao);
 
     protected RegraAnaliseResultado Explicada(string condicao, string dados, string justificativa, IEnumerable<string> evidencias)
         => Resultado(RegraAnaliseStatus.Explicada, condicao, dados, justificativa, evidencias);
@@ -118,7 +133,9 @@ internal abstract class RegraAnaliseBase : IRegraAnalise
         string dados,
         string justificativa,
         IEnumerable<string> evidencias,
-        bool sinalizaAtencao = false)
+        bool sinalizaAtencao = false,
+        decimal? valorDevolucao = null,
+        int? diasEquivalentesDevolucao = null)
         => new()
         {
             NomeDaRegra = NomeDaRegra,
@@ -127,7 +144,9 @@ internal abstract class RegraAnaliseBase : IRegraAnalise
             Resultado = status,
             Justificativa = justificativa,
             Evidencias = evidencias.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList(),
-            SinalizaAtencao = sinalizaAtencao
+            SinalizaAtencao = sinalizaAtencao,
+            ValorDevolucao = valorDevolucao,
+            DiasEquivalentesDevolucao = diasEquivalentesDevolucao
         };
 
     protected static decimal SomarMovimentos(RegraAnaliseContexto contexto, params string[] codigos)
@@ -274,7 +293,13 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         string dados =
             $"Mensalidade-base R$ {mensalidadeBase:N2} / 30; devolução R$ {devolvido:N2}; dias equivalentes {dias}; valor proporcional R$ {proporcional:N2}; diferença R$ {diferenca:N2}; {resultadoTolerancia}.";
 
-        return Revisao(condicao, dados, justificativa, evidencias);
+        return Revisao(
+            condicao,
+            dados,
+            justificativa,
+            evidencias,
+            valorDevolucao: devolvido,
+            diasEquivalentesDevolucao: dias);
     }
 
     private static decimal ObterMensalidadeBase(RegraAnaliseContexto contexto, DateTime competencia)
