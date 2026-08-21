@@ -191,6 +191,8 @@ public static class RegrasAnaliseServiceTestes
             RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
             return !r.SinalizaAtencao &&
                    r.Resultado == RegraAnaliseStatus.RevisaoManual &&
+                   r.ValorDevolucao == 1961.84m &&
+                   r.DiasEquivalentesDevolucao == 15 &&
                    r.Justificativa.Contains("15 dias", StringComparison.OrdinalIgnoreCase) &&
                    r.Justificativa.Contains("R$ 1.961,84", StringComparison.OrdinalIgnoreCase) &&
                    r.Justificativa.Contains("dentro da tolerância", StringComparison.OrdinalIgnoreCase) &&
