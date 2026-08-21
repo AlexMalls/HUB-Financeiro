@@ -33,6 +33,85 @@ public static class RegrasAnaliseServiceTestes
             return r.Resultado == RegraAnaliseStatus.Explicada;
         });
 
+        Testar(testes, "Caso Ana Paula reconhece inclusão proporcional de 16 dias", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoInclusaoProporcional(
+                dataInicio: new DateTime(2026, 6, 15),
+                valorFatura: 524.71m,
+                valorOver: 983.84m);
+
+            RegraAnaliseResultado r = new RegraInclusaoProporcionalVigencia15().Avaliar(contexto);
+            return r.Resultado == RegraAnaliseStatus.Explicada &&
+                   r.ExplicaDivergencia &&
+                   r.DadosUtilizados.Contains("16", StringComparison.OrdinalIgnoreCase) &&
+                   r.DadosUtilizados.Contains("524,71", StringComparison.OrdinalIgnoreCase);
+        });
+
+        Testar(testes, "Inclusão no dia 15 com valor proporcional incorreto permanece divergência", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoInclusaoProporcional(
+                dataInicio: new DateTime(2026, 6, 15),
+                valorFatura: 500m,
+                valorOver: 983.84m);
+
+            RegraAnaliseResultado r = new RegraInclusaoProporcionalVigencia15().Avaliar(contexto);
+            return r.Resultado == RegraAnaliseStatus.EvidenciaEncontrada &&
+                   !r.ExplicaDivergencia;
+        });
+
+        Testar(testes, "Inclusão proporcional de Ana Paula termina como Compatível", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoInclusaoProporcional(
+                dataInicio: new DateTime(2026, 6, 15),
+                valorFatura: 524.71m,
+                valorOver: 983.84m);
+            ComparacaoPrincipalResultado comparacao = contexto.Comparacao;
+
+            var arquivo = new FaturaBradescoArquivo
+            {
+                NomeArquivo = "fatura-junho.pdf",
+                Competencia = new DateTime(2026, 6, 1)
+            };
+            var subfatura = new FaturaBradescoSubfatura
+            {
+                Numero = 2,
+                Entidade = "CONSELHO FEDERAL"
+            };
+            subfatura.Beneficiarios.Add(new FaturaBradescoBeneficiario
+            {
+                Certificado = "0000067/00",
+                Nome = "ANA PAULA GARCIA PAIVA",
+                DataInicio = new DateTime(2026, 6, 15),
+                Plano = "NS01"
+            });
+            arquivo.Subfaturas.Add(subfatura);
+
+            AnaliseFinalDiagnostico diagnostico = new AnaliseFinalService().Gerar(
+                new ComparacaoPrincipalDiagnostico
+                {
+                    CompetenciaAnalisada = new DateTime(2026, 6, 1),
+                    Resultados = new[] { comparacao }
+                },
+                new LancamentosConsolidacaoDiagnostico
+                {
+                    Composicoes = new[] { contexto.Composicao! }
+                },
+                new ContextoTemporalDiagnostico
+                {
+                    CompetenciaAnalisada = new DateTime(2026, 6, 1)
+                },
+                new[] { arquivo },
+                new OverArquivo
+                {
+                    NomeArquivo = "Over 062026.xlsx",
+                    Competencia = new DateTime(2026, 6, 1)
+                });
+
+            AnaliseFinalResultado resultado = diagnostico.Resultados.Single();
+            return resultado.Status == AnaliseFinalStatus.Compativel &&
+                   resultado.RegraExplicativa.Contains("Inclusão proporcional por vigência 15", StringComparison.OrdinalIgnoreCase);
+        });
+
         Testar(testes, "Retroativo presente mas diferente vira evidência", () =>
         {
             var contexto = CriarContexto(100m, new ComponenteFatura { Movimento = "IR", Competencia = Mes(), Valor = 80m });
@@ -352,6 +431,73 @@ public static class RegrasAnaliseServiceTestes
                         Valor = valorDevolucaoBradesco,
                         Arquivo = "fatura-agosto.pdf",
                         PaginaPdf = 5
+                    }
+                }
+            }
+        };
+    }
+
+    private static RegraAnaliseContexto CriarCasoInclusaoProporcional(
+        DateTime dataInicio,
+        decimal valorFatura,
+        decimal valorOver)
+    {
+        var comparacao = new ComparacaoPrincipalResultado
+        {
+            IdResultado = "T-ANA-PAULA",
+            Certificado = "0000067/00",
+            NomeFatura = "ANA PAULA GARCIA PAIVA",
+            NomeOver = "ANA PAULA GARCIA PAIVA",
+            Categoria = ComparacaoPrincipalCategoria.ValorMaiorNoOver,
+            ValorFatura = valorFatura,
+            ValorOverComparavel = valorOver,
+            DiferencaFaturaMenosOver = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
+                valorFatura - valorOver)
+        };
+
+        return new RegraAnaliseContexto
+        {
+            CompetenciaAnalisada = new DateTime(2026, 6, 1),
+            Comparacao = comparacao,
+            DadosFatura = new DadosBeneficiarioFaturaAnalise
+            {
+                Arquivo = "fatura-junho.pdf",
+                Subfatura = 2,
+                Entidade = "CONSELHO FEDERAL",
+                Certificado = comparacao.Certificado,
+                Nome = comparacao.NomeFatura,
+                DataInicio = dataInicio,
+                Plano = "NS01"
+            },
+            Composicao = new ComposicaoBeneficiario
+            {
+                Certificado = comparacao.Certificado,
+                NomeFatura = comparacao.NomeFatura,
+                NomeOver = comparacao.NomeOver,
+                ComponentesFatura = new[]
+                {
+                    new ComponenteFatura
+                    {
+                        PaginaPdf = 2,
+                        Subfatura = 2,
+                        Entidade = "CONSELHO FEDERAL",
+                        Movimento = "IM",
+                        Competencia = new DateTime(2026, 6, 1),
+                        Plano = "NS01",
+                        Valor = valorFatura,
+                        ConsiderarNoComparavel = true
+                    }
+                },
+                ComponentesOver = new[]
+                {
+                    new ComponenteOver
+                    {
+                        NumeroLinha = 9161,
+                        Competencia = new DateTime(2026, 6, 1),
+                        Evento = "0070",
+                        Descricao = "BRADESCO SAÚDE NACIONAL II Q CA R3 13",
+                        ValorNET = valorOver,
+                        ConsiderarNoNETComparavel = true
                     }
                 }
             }
