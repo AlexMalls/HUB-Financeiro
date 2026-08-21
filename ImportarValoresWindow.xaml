@@ -1,0 +1,139 @@
+<Window x:Class="HubFinanceiro.ImportarValoresWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Importar Valores"
+        Height="400"
+        Width="500"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize">
+    
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#7C3AED"/>
+        <SolidColorBrush x:Key="BackgroundDark" Color="#1A1A1A"/>
+        <SolidColorBrush x:Key="BackgroundMedium" Color="#252526"/>
+        <SolidColorBrush x:Key="TextColor" Color="#E0E0E0"/>
+    </Window.Resources>
+    
+    <Border Background="{StaticResource BackgroundDark}"
+            CornerRadius="12"
+            BorderBrush="{StaticResource PrimaryColor}"
+            BorderThickness="2">
+        <Grid Margin="25">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="20"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="20"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Cabeçalho -->
+            <Grid Grid.Row="0">
+                <TextBlock Text="Importar Valores do Excel"
+                          FontSize="20"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource TextColor}"/>
+                
+                <Button Content="×"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Top"
+                       Width="30"
+                       Height="30"
+                       FontSize="20"
+                       Background="Transparent"
+                       Foreground="{StaticResource TextColor}"
+                       BorderThickness="0"
+                       Cursor="Hand"
+                       Click="Fechar_Click">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                               CornerRadius="15">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#FF4444"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+            
+            <!-- Instruções -->
+            <TextBlock Grid.Row="1"
+                      Text="Cole aqui os valores copiados do Excel (ex: R$ 266,53 R$ 350,65)"
+                      FontSize="12"
+                      Foreground="#999999"
+                      TextWrapping="Wrap"
+                      VerticalAlignment="Center"/>
+            
+            <!-- TextBox para colar -->
+            <Border Grid.Row="2"
+                    Background="{StaticResource BackgroundMedium}"
+                    CornerRadius="8"
+                    BorderBrush="{StaticResource PrimaryColor}"
+                    BorderThickness="1">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBox x:Name="ValoresTextBox"
+                            Background="Transparent"
+                            Foreground="{StaticResource TextColor}"
+                            BorderThickness="0"
+                            Padding="15"
+                            FontSize="14"
+                            FontFamily="Consolas"
+                            TextWrapping="Wrap"
+                            AcceptsReturn="True"
+                            VerticalScrollBarVisibility="Auto"
+                            CaretBrush="{StaticResource PrimaryColor}"/>
+                </ScrollViewer>
+            </Border>
+            
+            <!-- Botão Importar -->
+            <Button Grid.Row="4"
+                   Height="45"
+                   Background="{StaticResource PrimaryColor}"
+                   Foreground="White"
+                   BorderThickness="0"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Cursor="Hand"
+                   Click="ImportarValores_Click">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                           CornerRadius="8">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#9140f0"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+                <TextBlock Text="✓ IMPORTAR VALORES" 
+                          FontWeight="Bold"/>
+            </Button>
+            
+        </Grid>
+    </Border>
+</Window>

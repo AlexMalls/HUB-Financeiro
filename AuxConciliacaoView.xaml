@@ -1,0 +1,46 @@
+<UserControl x:Class="HubFinanceiro.AuxConciliacaoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="Transparent">
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                MinWidth="420"
+                MaxWidth="620"
+                Padding="34,30"
+                Background="{DynamicResource BackgroundMedium}"
+                BorderBrush="{DynamicResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="12">
+
+            <StackPanel HorizontalAlignment="Center">
+
+                <Border Width="58"
+                        Height="58"
+                        Margin="0,0,0,18"
+                        Background="{DynamicResource BackgroundLight}"
+                        CornerRadius="29">
+                    <TextBlock Text="&#xE9D2;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="25"
+                               Foreground="{DynamicResource PrimaryColor}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <TextBlock Text="Aux Conciliação"
+                           FontSize="26"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextColor}"
+                           HorizontalAlignment="Center"/>
+
+                <TextBlock Text="Em desenvolvimento"
+                           Margin="0,10,0,0"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource PrimaryColor}"
+                           HorizontalAlignment="Center"/>
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

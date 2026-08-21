@@ -1,0 +1,913 @@
+<Window x:Class="HubFinanceiro.IncluirAnaliseFaturaWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Incluir Análise de Faturas"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="Transparent"
+        AllowsTransparency="True"
+        Width="900"
+        Height="620"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#7920dc"/>
+        <SolidColorBrush x:Key="PrimaryHoverColor" Color="#5e17aa"/>
+        <SolidColorBrush x:Key="BackgroundDark" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="BackgroundMedium" Color="#252526"/>
+        <SolidColorBrush x:Key="BackgroundLight" Color="#2A2A2D"/>
+        <SolidColorBrush x:Key="TextColor" Color="White"/>
+        <SolidColorBrush x:Key="AccentColor" Color="#633884"/>
+        <SolidColorBrush x:Key="CloseButtonHover" Color="#C42B1C"/>
+        <SolidColorBrush x:Key="MutedTextColor" Color="#8F8F98"/>
+        <SolidColorBrush x:Key="ValidationSuccessColor" Color="#70D6A0"/>
+        <SolidColorBrush x:Key="ValidationErrorColor" Color="#FF7B7B"/>
+        <SolidColorBrush x:Key="ValidationWorkingColor" Color="#C9A8F1"/>
+        <SolidColorBrush x:Key="ScrollbarColor" Color="#6E6E6E"/>
+
+        <!-- Scrollbar minimalista no mesmo padrão visual da OPEX. -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="Auto"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track"
+                                   Orientation="{TemplateBinding Orientation}"
+                                   IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb Background="Transparent">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder"
+                                                        Background="{StaticResource ScrollbarColor}"
+                                                        CornerRadius="4"
+                                                        Margin="2"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#8A6AA0"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource PrimaryColor}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Height" Value="8"/>
+                                <Setter Property="Width" Value="Auto"/>
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                            </Trigger>
+                            <Trigger Property="Orientation" Value="Vertical">
+                                <Setter Property="Width" Value="8"/>
+                                <Setter Property="Height" Value="Auto"/>
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FileListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="#D7D7DD"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}"
+                                Margin="0,1">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#2D2733"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#39264A"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource PrimaryHoverColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.35"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#343438"/>
+            <Setter Property="BorderBrush" Value="#505057"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#3E3448"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
+        <!-- Checkbox no mesmo padrão visual do HUB: caixa roxa, check próprio e hover. -->
+        <Style x:Key="HubCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#D8D8DE"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                            <Border x:Name="CheckBoxBorder"
+                                    Width="18" Height="18"
+                                    Background="{StaticResource BackgroundDark}"
+                                    BorderBrush="{StaticResource PrimaryColor}"
+                                    BorderThickness="2"
+                                    CornerRadius="4"
+                                    Margin="0,0,7,0"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="CheckMark"
+                                           Text="✓"
+                                           Foreground="{StaticResource PrimaryColor}"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="0,-1,0,0"
+                                           Visibility="Collapsed"/>
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{StaticResource PrimaryHoverColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Ícones vetoriais da Análise de Faturas. Sem PNGs/arquivos externos. -->
+        <DataTemplate x:Key="AnalisePdfIconTemplate">
+            <Viewbox Width="24" Height="24" Stretch="Uniform" IsHitTestVisible="False">
+                <Grid Width="28" Height="28">
+                    <Path Data="M6,2 L17,2 L23,8 L23,26 L6,26 Z M17,2 L17,8 L23,8"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.8" StrokeLineJoin="Round"/>
+                    <Border Background="#252526" CornerRadius="2" Padding="1.5,0.2"
+                            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4">
+                        <TextBlock Text="PDF" FontSize="6.4" FontWeight="Bold"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"/>
+                    </Border>
+                </Grid>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AnalisePastaIconTemplate">
+            <Viewbox Width="25" Height="25" Stretch="Uniform" IsHitTestVisible="False">
+                <Grid Width="30" Height="26">
+                    <Path Data="M2,7 L11,7 L14,10 L27,10 C28.1,10 28.7,11 28.2,12 L23,23 C22.6,23.8 21.9,24 21,24 L3,24 C2.4,24 2,23.6 2,23 Z"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.8" StrokeLineJoin="Round"/>
+                    <Path Data="M2,7 L2,4 C2,3.4 2.4,3 3,3 L10,3 L13,7"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.8" StrokeLineJoin="Round"/>
+                </Grid>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AnaliseLeituraIconTemplate">
+            <Viewbox Width="24" Height="24" Stretch="Uniform" IsHitTestVisible="False">
+                <Grid Width="28" Height="28">
+                    <Path Data="M5,2 L17,2 L22,7 L22,17 M17,2 L17,7 L22,7 M5,2 L5,25 L16,25"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.7" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    <Path Data="M8,10 L18,10 M8,14 L16,14 M8,18 L13,18"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    <Ellipse Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,3"
+                             Fill="#252526"
+                             Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                             StrokeThickness="1.8"/>
+                    <Path Data="M22,22 L27,27"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                </Grid>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AnaliseExcelIconTemplate">
+            <Viewbox Width="24" Height="24" Stretch="Uniform" IsHitTestVisible="False">
+                <Grid Width="28" Height="28">
+                    <Path Data="M7,2 L18,2 L23,7 L23,26 L7,26 Z M18,2 L18,7 L23,7"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.7" StrokeLineJoin="Round"/>
+                    <Path Data="M2.5,8 L12.5,6.5 L12.5,22 L2.5,20.5 Z"
+                          Fill="#252526"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.7" StrokeLineJoin="Round"/>
+                    <Path Data="M5,11 L10,18 M10,11 L5,18"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.9" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    <Path Data="M15,11 L20,11 M15,15 L20,15 M15,19 L20,19"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.25" StrokeStartLineCap="Round"/>
+                </Grid>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AnaliseVinculoIconTemplate">
+            <Viewbox Width="24" Height="24" Stretch="Uniform" IsHitTestVisible="False">
+                <Grid Width="30" Height="28">
+                    <Path Data="M2,10 L2,25 L14,25 L14,13 L10,10 Z M10,10 L10,13 L14,13"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.7" StrokeLineJoin="Round"/>
+                    <Path Data="M16,3 L16,15 L28,15 L28,6 L25,3 Z M25,3 L25,6 L28,6"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.7" StrokeLineJoin="Round"/>
+                    <Path Data="M7,17 L18,17 M15,14 L18,17 L15,20"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                    <Path Data="M23,11 L12,11 M15,8 L12,11 L15,14"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                </Grid>
+            </Viewbox>
+        </DataTemplate>
+
+        <!-- Ações compactas por ícone: hover roxo e pequeno "pop" ao pressionar. -->
+        <Style x:Key="IconActionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E9E9EE"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="IconBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="4"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1"/>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="IconBorder" Property="Background" Value="#32283D"/>
+                                <Setter TargetName="IconBorder" Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                                <Setter Property="Foreground" Value="#C89AFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="IconBorder" Property="Background" Value="#412E51"/>
+                                <Setter TargetName="IconBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                <Setter Property="Foreground" Value="#E4C7FF"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IconBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0.88" Duration="0:0:0.055"/>
+                                            <DoubleAnimation Storyboard.TargetName="IconBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="0.88" Duration="0:0:0.055"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IconBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.11"/>
+                                            <DoubleAnimation Storyboard.TargetName="IconBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.11"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="IconBorder" Property="Opacity" Value="0.35"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FileListStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="#202024"/>
+            <Setter Property="Foreground" Value="#C9C9D0"/>
+            <Setter Property="BorderBrush" Value="#38383E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="MaxHeight" Value="78"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource FileListItemStyle}"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+        </Style>
+
+        <!-- Cabeçalho clicável dos grupos de faturas. A lista começa recolhida. -->
+        <Style x:Key="CompactFileToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="ToggleBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="7"
+                                Padding="6,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="22"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Chevron"
+                                           Grid.Column="1"
+                                           Text="›"
+                                           FontSize="20"
+                                           Foreground="#8F8F98"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <RotateTransform Angle="0"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ToggleBorder" Property="Background" Value="#2C2831"/>
+                                <Setter TargetName="Chevron" Property="Foreground" Value="#C9A8F1"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ToggleBorder" Property="Background" Value="#29252F"/>
+                                <Setter TargetName="Chevron" Property="Foreground" Value="White"/>
+                                <Setter TargetName="Chevron" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="90"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="18"
+            Background="{StaticResource BackgroundDark}"
+            BorderBrush="{StaticResource PrimaryColor}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="42"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Barra superior -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource BackgroundMedium}"
+                    CornerRadius="18,18,0,0"
+                    MouseLeftButtonDown="TopBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="Incluir Análise de Faturas"
+                               Margin="16,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource TextColor}"
+                               FontSize="14"
+                               FontWeight="SemiBold"/>
+                    <Button Content="✕"
+                            Width="42"
+                            Height="42"
+                            HorizontalAlignment="Right"
+                            Background="Transparent"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            Click="Close_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="CloseBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    CornerRadius="0,18,0,0">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="CloseBorder" Property="Background" Value="{StaticResource CloseButtonHover}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="26,22,26,22">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="18"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="Arquivos da análise"
+                               Foreground="{StaticResource TextColor}"
+                               FontSize="21"
+                               FontWeight="Bold"/>
+                    <TextBlock Text="Selecione as faturas dos três períodos e o relatório Over referente ao mês passado."
+                               Foreground="#909099"
+                               FontSize="12"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              PanningMode="VerticalOnly"
+                              CanContentScroll="False"
+                              Padding="0,0,8,0">
+                    <StackPanel>
+                        <!-- Faturas mês passado -->
+                        <Border Background="{StaticResource BackgroundMedium}"
+                                BorderBrush="#3B3B41"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="9"
+                                Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton x:Name="FaturasPassadoToggle"
+                                                  IsChecked="False"
+                                                  Style="{StaticResource CompactFileToggleStyle}"
+                                                  ToolTip="Clique para mostrar ou esconder a lista de PDFs">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="185"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="1. Faturas mês passado"
+                                                       Foreground="White"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="FaturasPassadoStatusText"
+                                                       Grid.Column="1"
+                                                       Text="Nenhum arquivo selecionado"
+                                                       Foreground="#A6A6AE"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="•" Foreground="#5F5F68" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="FaturasPassadoCompetenciaText"
+                                                       Grid.Column="3"
+                                                       Text="Competência: —"
+                                                       Foreground="{StaticResource MutedTextColor}"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <Button x:Name="BtnSelecionarPassado"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Adicionar PDFs"
+                                                Click="SelecionarFaturasPassado_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnalisePdfIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnSelecionarPastaPassado"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Adicionar uma pasta e procurar faturas em todas as subpastas"
+                                                Click="SelecionarPastaFaturasPassado_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnalisePastaIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnTestarPassado"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Testar leitura dos PDFs selecionados"
+                                                IsEnabled="False"
+                                                Click="TestarLeituraPassado_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnaliseLeituraIconTemplate}"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Grid.Row="1" Margin="6,6,6,2">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=FaturasPassadoToggle}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <ListBox x:Name="FaturasPassadoListBox"
+                                             Style="{StaticResource FileListStyle}"
+                                             MaxHeight="105"
+                                             ToolTip="Duplo clique em um PDF para remover"
+                                             MouseDoubleClick="FaturasListBox_MouseDoubleClick"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Faturas mês atual -->
+                        <Border Background="{StaticResource BackgroundMedium}"
+                                BorderBrush="#3B3B41"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="9"
+                                Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton x:Name="FaturasAtualToggle"
+                                                  IsChecked="False"
+                                                  Style="{StaticResource CompactFileToggleStyle}"
+                                                  ToolTip="Clique para mostrar ou esconder a lista de PDFs">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="185"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="2. Faturas mês atual"
+                                                       Foreground="White"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="FaturasAtualStatusText"
+                                                       Grid.Column="1"
+                                                       Text="Nenhum arquivo selecionado"
+                                                       Foreground="#A6A6AE"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="•" Foreground="#5F5F68" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="FaturasAtualCompetenciaText"
+                                                       Grid.Column="3"
+                                                       Text="Competência: —"
+                                                       Foreground="{StaticResource MutedTextColor}"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <Button x:Name="BtnSelecionarAtual"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Adicionar PDFs"
+                                                Click="SelecionarFaturasAtual_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnalisePdfIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnSelecionarPastaAtual"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Adicionar uma pasta e procurar faturas em todas as subpastas"
+                                                Click="SelecionarPastaFaturasAtual_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnalisePastaIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnTestarAtual"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Testar leitura dos PDFs selecionados"
+                                                IsEnabled="False"
+                                                Click="TestarLeituraAtual_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnaliseLeituraIconTemplate}"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Grid.Row="1" Margin="6,6,6,2">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=FaturasAtualToggle}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <ListBox x:Name="FaturasAtualListBox"
+                                             Style="{StaticResource FileListStyle}"
+                                             MaxHeight="105"
+                                             ToolTip="Duplo clique em um PDF para remover"
+                                             MouseDoubleClick="FaturasListBox_MouseDoubleClick"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Faturas mês que vem -->
+                        <Border Background="{StaticResource BackgroundMedium}"
+                                BorderBrush="#3B3B41"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="9"
+                                Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton x:Name="FaturasSeguinteToggle"
+                                                  IsChecked="False"
+                                                  Style="{StaticResource CompactFileToggleStyle}"
+                                                  ToolTip="Clique para mostrar ou esconder a lista de PDFs">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="185"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="3. Faturas mês que vem"
+                                                       Foreground="White"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="FaturasSeguinteStatusText"
+                                                       Grid.Column="1"
+                                                       Text="Nenhum arquivo selecionado"
+                                                       Foreground="#A6A6AE"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="•" Foreground="#5F5F68" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="FaturasSeguinteCompetenciaText"
+                                                       Grid.Column="3"
+                                                       Text="Competência: —"
+                                                       Foreground="{StaticResource MutedTextColor}"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <Button x:Name="BtnSelecionarSeguinte"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Adicionar PDFs"
+                                                Click="SelecionarFaturasSeguinte_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnalisePdfIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnSelecionarPastaSeguinte"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Adicionar uma pasta e procurar faturas em todas as subpastas"
+                                                Click="SelecionarPastaFaturasSeguinte_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnalisePastaIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnTestarSeguinte"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Testar leitura dos PDFs selecionados"
+                                                IsEnabled="False"
+                                                Click="TestarLeituraSeguinte_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnaliseLeituraIconTemplate}"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Grid.Row="1" Margin="6,6,6,2">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=FaturasSeguinteToggle}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <ListBox x:Name="FaturasSeguinteListBox"
+                                             Style="{StaticResource FileListStyle}"
+                                             MaxHeight="105"
+                                             ToolTip="Duplo clique em um PDF para remover"
+                                             MouseDoubleClick="FaturasListBox_MouseDoubleClick"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <!-- Over -->
+                        <Border Background="{StaticResource BackgroundMedium}"
+                                BorderBrush="{StaticResource AccentColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="185"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="4. Relatório Over — mês passado"
+                                               Foreground="White"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,10,0">
+                                        <TextBlock x:Name="RelatorioOverStatusText"
+                                                   Text="Nenhum arquivo selecionado"
+                                                   Foreground="#A6A6AE"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="250"/>
+                                        <TextBlock Text="  •  " Foreground="#5F5F68" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="RelatorioOverCompetenciaText"
+                                                   Text="Competência: —"
+                                                   Foreground="{StaticResource MutedTextColor}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Button x:Name="BtnSelecionarOver"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Selecionar planilha Over"
+                                                Click="SelecionarRelatorioOver_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnaliseExcelIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnTestarOver"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Testar leitura da planilha Over"
+                                                IsEnabled="False"
+                                                Click="TestarLeituraOver_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnaliseLeituraIconTemplate}"/>
+                                        </Button>
+                                        <Button x:Name="BtnTestarVinculo"
+                                                Style="{StaticResource IconActionButtonStyle}"
+                                                ToolTip="Testar vínculo Fatura × Over"
+                                                IsEnabled="False"
+                                                Click="TestarVinculo_Click">
+                                            <ContentControl ContentTemplate="{StaticResource AnaliseVinculoIconTemplate}"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <WrapPanel Grid.Row="2" Orientation="Horizontal">
+                                    <CheckBox x:Name="IgnorarCoparticipacaoCheckBox"
+                                              Style="{StaticResource HubCheckBoxStyle}"
+                                              Content="Ignorar coparticipação no valor comparável"
+                                              IsChecked="True"
+                                              Foreground="#D8D8DE"
+                                              FontSize="11"
+                                              Margin="0,0,24,0"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Marcado por padrão: eventos de coparticipação continuam visíveis, mas não entram no NET comparável. Desmarque para incluí-los na comparação."/>
+                                    <CheckBox x:Name="IgnorarCompetenciasAnterioresCheckBox"
+                                              Style="{StaticResource HubCheckBoxStyle}"
+                                              Content="Ignorar competências anteriores à competência analisada"
+                                              IsChecked="True"
+                                              Foreground="#D8D8DE"
+                                              FontSize="11"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Marcado por padrão: lançamentos da fatura com competência anterior ao mês analisado continuam visíveis nos detalhes, mas não entram no valor comparável. Desmarque para incluí-los."/>
+                                </WrapPanel>
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Rodapé -->
+                <Grid Grid.Row="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="PreparacaoStatusText"
+                               Text="Selecione e valide os quatro grupos. Feito salvará a preparação e abrirá o resultado final."
+                               Foreground="{StaticResource MutedTextColor}"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,0,18,0"/>
+                    <Button Grid.Column="1"
+                            Content="Cancelar"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            MinWidth="100"
+                            Click="Cancelar_Click"/>
+                    <Button x:Name="BtnFeito"
+                            Grid.Column="3"
+                            Content="Feito"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            MinWidth="110"
+                            IsEnabled="False"
+                            Click="Feito_Click"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

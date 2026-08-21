@@ -1,0 +1,217 @@
+<Window x:Class="HubFinanceiro.CnabDadosBancariosWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cadastro de colaborador"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="Transparent"
+        AllowsTransparency="True"
+        Width="520"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#7920dc"/>
+        <SolidColorBrush x:Key="PrimaryHoverColor" Color="#5e17aa"/>
+        <SolidColorBrush x:Key="BackgroundDark" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="BackgroundMedium" Color="#252526"/>
+        <SolidColorBrush x:Key="TextColor" Color="White"/>
+        <SolidColorBrush x:Key="AccentColor" Color="#633884"/>
+
+        <Style x:Key="FieldStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Background" Value="#303036"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#4B3E59"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource PrimaryHoverColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundDark}"
+            BorderBrush="#34343A"
+            BorderThickness="1"
+            CornerRadius="14">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="42"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Background="#242426" MouseLeftButtonDown="TopBar_MouseLeftButtonDown">
+                <TextBlock Text="Cadastro de colaborador"
+                           Margin="18,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="White"
+                           FontWeight="SemiBold"/>
+                <Button HorizontalAlignment="Right"
+                        Width="42"
+                        Content="×"
+                        FontSize="20"
+                        Foreground="#BDBDC4"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Click="Cancelar_Click"/>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Margin="22,20,22,22">
+                <StackPanel x:Name="IdentificacaoSomenteLeituraPanel">
+                    <TextBlock x:Name="NomeTextBlock"
+                               Foreground="White"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap"/>
+                    <TextBlock x:Name="CodigoTextBlock"
+                               Margin="0,3,0,18"
+                               Foreground="#888891"
+                               FontSize="11"/>
+                </StackPanel>
+
+                <Grid x:Name="IdentificacaoEdicaoPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="130"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Nome do colaborador" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                        <TextBox x:Name="NomeTextBox" Style="{StaticResource FieldStyle}" MaxLength="60"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Matrícula/código" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                        <TextBox x:Name="CodigoFuncionarioTextBox" Style="{StaticResource FieldStyle}" MaxLength="8"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3">
+                        <TextBlock Text="CPF" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                        <TextBox x:Name="DocumentoTextBox" Style="{StaticResource FieldStyle}" MaxLength="14"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0">
+                        <TextBlock Text="Banco" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                        <TextBox x:Name="BancoTextBox" Style="{StaticResource FieldStyle}" MaxLength="3"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="2" Grid.Column="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="54"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Agência" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                            <TextBox x:Name="AgenciaTextBox" Style="{StaticResource FieldStyle}" MaxLength="5"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="DV" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                            <TextBox x:Name="AgenciaDvTextBox" Style="{StaticResource FieldStyle}" MaxLength="1"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="54"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Conta" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                            <TextBox x:Name="ContaTextBox" Style="{StaticResource FieldStyle}" MaxLength="12"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="DV" Foreground="#AFAFB7" FontSize="11" Margin="2,0,0,5"/>
+                            <TextBox x:Name="ContaDvTextBox" Style="{StaticResource FieldStyle}" MaxLength="1"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <TextBlock Text="Nesta versão do criador de Vale Transporte, o lote segue o modelo de crédito em conta Santander do CNAB de referência."
+                           Margin="0,16,0,0"
+                           Foreground="#85858D"
+                           FontSize="11"
+                           TextWrapping="Wrap"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                    <Button Content="Cancelar"
+                            Width="100"
+                            Height="36"
+                            Margin="0,0,8,0"
+                            Background="#333338"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            Click="Cancelar_Click"/>
+                    <Button Content="Salvar"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="Salvar_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,416 @@
+<Window x:Class="HubFinanceiro.ResultadoAnaliseFaturasWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:HubFinanceiro" Title="Resultado da análise de faturas" WindowStyle="None" ResizeMode="CanResize" MinWidth="1180" MinHeight="650" Width="1480" Height="840" Background="Transparent" AllowsTransparency="True" WindowStartupLocation="CenterOwner" UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#7920DC" />
+        <SolidColorBrush x:Key="PrimaryHoverColor" Color="#5E17AA" />
+        <SolidColorBrush x:Key="BackgroundDark" Color="#1E1E1E" />
+        <SolidColorBrush x:Key="BackgroundMedium" Color="#252526" />
+        <SolidColorBrush x:Key="SurfaceColor" Color="#202024" />
+        <SolidColorBrush x:Key="MutedTextColor" Color="#96969F" />
+        <SolidColorBrush x:Key="BorderColor" Color="#3B3B41" />
+        <SolidColorBrush x:Key="GridBorderColor" Color="#3A3A40" />
+        <SolidColorBrush x:Key="SuccessColor" Color="#70D6A0" />
+        <SolidColorBrush x:Key="WarningColor" Color="#F2C879" />
+        <SolidColorBrush x:Key="ErrorColor" Color="#FF7777" />
+        <SolidColorBrush x:Key="CloseButtonHover" Color="#C42B1C" />
+        <SolidColorBrush x:Key="SelectionPurple" Color="#7A3FA0" />
+        <SolidColorBrush x:Key="ScrollbarColor" Color="#6E6E6E" />
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb Background="Transparent">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder" Background="{StaticResource ScrollbarColor}" CornerRadius="4" Margin="2" />
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#8A6AA0" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource PrimaryColor}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Height" Value="8" />
+                                <Setter Property="Width" Value="Auto" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#343438" />
+            <Setter Property="BorderBrush" Value="#515158" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#403747" /><Setter TargetName="B" Property="BorderBrush" Value="#684A7E" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="B" Property="Opacity" Value="0.45" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryActionButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="{StaticResource PrimaryHoverColor}" /><Setter TargetName="B" Property="BorderBrush" Value="{StaticResource PrimaryHoverColor}" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="B" Property="Opacity" Value="0.45" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HubTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceColor}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="CaretBrush" Value="{StaticResource PrimaryColor}" />
+            <Setter Property="SelectionBrush" Value="{StaticResource SelectionPurple}" />
+            <Setter Property="BorderBrush" Value="#494950" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="11,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="InputBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HubComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#DADAE0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}" Margin="2,1"><ContentPresenter /></Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#2D2733" /></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#39264A" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HubComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource SurfaceColor}" />
+            <Setter Property="BorderBrush" Value="#494950" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource HubComboBoxItemStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" />
+                            <Grid Margin="11,0,10,0" IsHitTestVisible="False">
+                                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="24" /></Grid.ColumnDefinitions>
+                                <ContentPresenter VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                                <TextBlock x:Name="ArrowText" Grid.Column="1" Text="&gt;" Foreground="#CFCFD5" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform><RotateTransform Angle="0" /></TextBlock.RenderTransform>
+                                </TextBlock>
+                            </Grid>
+                            <ToggleButton x:Name="DropDownToggle" Background="Transparent" BorderThickness="0" Focusable="False" Cursor="Hand" ClickMode="Press" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton"><Border Background="Transparent" /></ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" PopupAnimation="Fade">
+                                <Border Background="#242428" BorderBrush="#515158" BorderThickness="1" CornerRadius="8" Margin="0,4,0,0" Padding="3" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer MaxHeight="300"><ItemsPresenter /></ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="ArrowText" Property="RenderTransform">
+                                    <Setter.Value><RotateTransform Angle="90" /></Setter.Value>
+                                </Setter>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource PrimaryColor}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FilterCardButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="CardBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CardBorder" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CardBorder" Property="Opacity" Value="0.80" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CloseWindowButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#D0D0D5" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="CloseBorder" Background="{TemplateBinding Background}" CornerRadius="0,11,0,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CloseBorder" Property="Background" Value="{StaticResource CloseButtonHover}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CloseBorder" Property="Opacity" Value="0.82" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{StaticResource GridBorderColor}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#4B2566" /><Setter Property="Foreground" Value="White" /></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#29292E" />
+            <Setter Property="Foreground" Value="#DADAE0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="{StaticResource GridBorderColor}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="Padding" Value="8,5" />
+        </Style>
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="{StaticResource SurfaceColor}" />
+            <Setter Property="Foreground" Value="#DEDEE4" />
+            <Style.Triggers>
+                <Trigger Property="AlternationIndex" Value="1"><Setter Property="Background" Value="#232328" /></Trigger>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#29262E" /></Trigger>
+                <DataTrigger Binding="{Binding DestaqueLinha}" Value="True"><Setter Property="Background" Value="#30283A" /></DataTrigger>
+                <DataTrigger Binding="{Binding TemExplicacaoManual}" Value="True">
+                    <Setter Property="Background" Value="#24372D" />
+                    <Setter Property="Foreground" Value="#E5F4E9" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundDark}" BorderBrush="#45454C" BorderThickness="1" CornerRadius="12" SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="46" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Background="#242426" CornerRadius="11,11,0,0" MouseLeftButtonDown="TopBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="Resultado da análise de faturas" Foreground="White" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0" />
+                    <Button HorizontalAlignment="Right" Content="✕" FontSize="15" Style="{StaticResource CloseWindowButtonStyle}" Click="Close_Click" />
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="10" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock x:Name="TituloCompetenciaText" Foreground="White" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Text="Resultado consolidado e investigável da competência." Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="ExportarExcelButton" Content="Extrair relatórios em Excel" Style="{StaticResource PrimaryActionButtonStyle}" Height="38" MinWidth="190" Margin="0,0,10,0" Click="ExportarExcel_Click" />
+                        <Button Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" Height="38" MinWidth="100" Click="Close_Click" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition /><ColumnDefinition Width="8" />
+                        <ColumnDefinition /><ColumnDefinition Width="8" />
+                        <ColumnDefinition /><ColumnDefinition Width="8" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="TotalCardButton" Grid.Column="0" Tag="Todos" Background="#28282D" Style="{StaticResource FilterCardButtonStyle}" Click="FiltroCard_Click" ToolTip="Mostrar todos os resultados">
+                        <StackPanel><TextBlock Text="Total" Foreground="#AFAFB7" FontSize="10" /><TextBlock x:Name="TotalText" Foreground="White" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                    </Button>
+                    <Button x:Name="CompativeisCardButton" Grid.Column="2" Tag="Compatível" Background="#202B26" Style="{StaticResource FilterCardButtonStyle}" Click="FiltroCard_Click" ToolTip="Filtrar por Compatível">
+                        <StackPanel><TextBlock Text="Compatíveis" Foreground="#AFAFB7" FontSize="10" /><TextBlock x:Name="CompativeisText" Foreground="{StaticResource SuccessColor}" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                    </Button>
+                    <Button x:Name="AtencaoCardButton" Grid.Column="4" Tag="Atenção" Background="#222B31" Style="{StaticResource FilterCardButtonStyle}" Click="FiltroCard_Click" ToolTip="Filtrar casos que exigem atenção">
+                        <StackPanel><TextBlock Text="Atenção" Foreground="#AFAFB7" FontSize="10" /><TextBlock x:Name="AtencaoText" Foreground="#74C7EC" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                    </Button>
+                    <Button x:Name="DivergenciasCardButton" Grid.Column="6" Tag="Divergência" Background="#302B20" Style="{StaticResource FilterCardButtonStyle}" Click="FiltroCard_Click" ToolTip="Filtrar por Divergência">
+                        <StackPanel><TextBlock Text="Divergências" Foreground="#AFAFB7" FontSize="10" /><TextBlock x:Name="DivergenciasText" Foreground="{StaticResource WarningColor}" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                    </Button>
+                </Grid>
+
+                <StackPanel Grid.Row="4">
+                    <Border Background="#25242A" BorderBrush="#3E3D45" BorderThickness="1" CornerRadius="9" Padding="12,9" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.0*" />
+                                <ColumnDefinition Width="1.15*" />
+                                <ColumnDefinition Width="1.15*" />
+                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="1.6*" />
+                                <ColumnDefinition Width="1.8*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="ToleranciaTituloText" Text="Diferenças ignoradas pela tolerância" Foreground="White" FontSize="11" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ToleranciaQuantidadeText" Foreground="{StaticResource MutedTextColor}" FontSize="10" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Fatura a maior" Foreground="#AFAFB7" FontSize="10" />
+                                <TextBlock x:Name="ToleranciaFaturaMaiorText" Foreground="{StaticResource WarningColor}" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Over a maior" Foreground="#AFAFB7" FontSize="10" />
+                                <TextBlock x:Name="ToleranciaOverMaiorText" Foreground="#B79AF6" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Text="Saldo líquido" Foreground="#AFAFB7" FontSize="10" />
+                                <TextBlock x:Name="ToleranciaSaldoText" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Coparticipação" Foreground="#AFAFB7" FontSize="10" />
+                                <TextBlock x:Name="CopartModoText" Foreground="#C8C8D0" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="5">
+                                <TextBlock Text="Competências anteriores" Foreground="#AFAFB7" FontSize="10" />
+                                <TextBlock x:Name="CompetenciasAnterioresModoText" Foreground="#C8C8D0" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="230" /><ColumnDefinition Width="0" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Visibility="Collapsed" IsHitTestVisible="False"><TextBlock Text="Status" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5" /><ComboBox x:Name="StatusComboBox" Height="36" Style="{StaticResource HubComboBoxStyle}" SelectionChanged="StatusComboBox_SelectionChanged" /></StackPanel><StackPanel Grid.Column="0" Margin="0"><TextBlock Text="Tipo de divergência" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5" /><ComboBox Height="36" Style="{StaticResource HubComboBoxStyle}" x:Name="TipoDivergenciaFiltroComboBox" Loaded="TipoDivergenciaFiltroComboBox_Loaded" SelectionChanged="TipoDivergenciaFiltroComboBox_SelectionChanged" MinWidth="205" /></StackPanel>
+                        <StackPanel Grid.Column="3"><TextBlock Text="Pesquisar beneficiário, certificado, entidade ou explicação" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5" /><TextBox x:Name="PesquisaTextBox" Height="36" Style="{StaticResource HubTextBoxStyle}" TextChanged="PesquisaTextBox_TextChanged" /></StackPanel>
+                        <Button x:Name="AbrirDetalhesButton" Grid.Column="5" Content="Abrir detalhes" Style="{StaticResource SecondaryButtonStyle}" Height="36" MinWidth="135" VerticalAlignment="Bottom" IsEnabled="False" Click="AbrirDetalhes_Click" />
+                    </Grid>
+                </StackPanel>
+
+                <Border Grid.Row="6" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" Padding="1">
+                    <DataGrid x:Name="ResultadosDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="33" ColumnHeaderHeight="33" EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectedCellsChanged="ResultadosDataGrid_SelectedCellsChanged" BeginningEdit="ResultadosDataGrid_BeginningEdit" CellEditEnding="ResultadosDataGrid_CellEditEnding" MouseDoubleClick="ResultadosDataGrid_MouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Beneficiário" Binding="{Binding Beneficiario}" Width="250" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Certificado" Binding="{Binding Certificado}" Width="110" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Tipo de divergência" Binding="{Binding TipoDivergencia}" Width="170" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Diferença" Binding="{Binding Diferenca}" Width="100" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Valor Fatura" Binding="{Binding ValorFatura}" Width="105" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Valor Over" Binding="{Binding ValorOver}" Width="105" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Entidade" Binding="{Binding Entidade}" Width="140" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Competência" Binding="{Binding Competencia}" Width="95" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="105" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Explicação" Binding="{Binding ExplicacaoManual, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="260" IsReadOnly="False">
+                                <DataGridTextColumn.EditingElementStyle>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background" Value="#25252A" />
+                                        <Setter Property="Foreground" Value="White" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="Padding" Value="6,3" />
+                                        <Setter Property="SelectionBrush" Value="#7A3FA0" />
+                                    </Style>
+                                </DataGridTextColumn.EditingElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Justificativa" Binding="{Binding Justificativa}" Width="420" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

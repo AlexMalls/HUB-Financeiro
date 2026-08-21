@@ -1,0 +1,751 @@
+<Window x:Class="HubFinanceiro.VinculoBeneficiariosDiagnosticoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:HubFinanceiro"
+        Title="Diagnóstico — vínculo Over x Fatura"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        MinWidth="1120"
+        MinHeight="650"
+        Width="1400"
+        Height="800"
+        Background="Transparent"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#7920dc"/>
+        <SolidColorBrush x:Key="PrimaryHoverColor" Color="#5e17aa"/>
+        <SolidColorBrush x:Key="BackgroundDark" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="BackgroundMedium" Color="#252526"/>
+        <SolidColorBrush x:Key="SurfaceColor" Color="#202024"/>
+        <SolidColorBrush x:Key="SurfaceHoverColor" Color="#2D2733"/>
+        <SolidColorBrush x:Key="SurfaceSelectedColor" Color="#39264A"/>
+        <SolidColorBrush x:Key="MutedTextColor" Color="#96969F"/>
+        <SolidColorBrush x:Key="BorderColor" Color="#3B3B41"/>
+        <SolidColorBrush x:Key="GridBorderColor" Color="#3A3A40"/>
+        <SolidColorBrush x:Key="SuccessColor" Color="#70D6A0"/>
+        <SolidColorBrush x:Key="FoundByNameColor" Color="#B98AF0"/>
+        <SolidColorBrush x:Key="WarningColor" Color="#F2C879"/>
+        <SolidColorBrush x:Key="ErrorColor" Color="#FF7777"/>
+        <SolidColorBrush x:Key="CloseButtonHover" Color="#C42B1C"/>
+        <SolidColorBrush x:Key="ScrollbarColor" Color="#6E6E6E"/>
+        <SolidColorBrush x:Key="SelectionPurple" Color="#7A3FA0"/>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="Auto"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb Background="Transparent">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder" Background="{StaticResource ScrollbarColor}" CornerRadius="4" Margin="2"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#8A6AA0"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource PrimaryColor}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Height" Value="8"/>
+                                <Setter Property="Width" Value="Auto"/>
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                            </Trigger>
+                            <Trigger Property="Orientation" Value="Vertical">
+                                <Setter Property="Width" Value="8"/>
+                                <Setter Property="Height" Value="Auto"/>
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#343438"/>
+            <Setter Property="BorderBrush" Value="#515158"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#403747"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#684A7E"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HubTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CaretBrush" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource SelectionPurple}"/>
+            <Setter Property="SelectionOpacity" Value="0.75"/>
+            <Setter Property="BorderBrush" Value="#494950"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="11,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="#684A7E"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                <Setter TargetName="InputBorder" Property="Background" Value="#242027"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HubComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#DADAE0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}" Margin="2,1">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource SurfaceHoverColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource SurfaceSelectedColor}"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HubComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#494950"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource HubComboBoxItemStyle}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="OuterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"/>
+                            <ContentPresenter Margin="12,0,42,0" VerticalAlignment="Center" HorizontalAlignment="Left" Content="{TemplateBinding SelectionBoxItem}" IsHitTestVisible="False"/>
+                            <ToggleButton x:Name="DropDownToggle" Width="38" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Focusable="False" Cursor="Hand" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ArrowArea" Background="Transparent" CornerRadius="0,8,8,0">
+                                            <Grid Width="38" Height="36">
+                                                <TextBlock x:Name="ArrowIcon" Text="&gt;" Foreground="#CFCFD6" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform x:Name="ArrowRotation" Angle="0"/>
+                                                    </TextBlock.RenderTransform>
+                                                </TextBlock>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ArrowArea" Property="Background" Value="#342A3B"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="ArrowRotation"
+                                                                             Storyboard.TargetProperty="Angle"
+                                                                             To="90" Duration="0:0:0.16"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="ArrowRotation"
+                                                                             Storyboard.TargetProperty="Angle"
+                                                                             To="0" Duration="0:0:0.16"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False" IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade">
+                                <Border Background="#202024" BorderBrush="{StaticResource PrimaryColor}" BorderThickness="1" CornerRadius="8" Margin="0,4,0,0" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="220">
+                                    <ScrollViewer Margin="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="OuterBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="OuterBorder" Property="BorderBrush" Value="#684A7E"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#262629"/>
+            <Setter Property="Foreground" Value="#E2E2E8"/>
+            <Setter Property="BorderBrush" Value="{StaticResource GridBorderColor}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#DEDEE4"/>
+            <Setter Property="BorderBrush" Value="{StaticResource GridBorderColor}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{StaticResource SurfaceSelectedColor}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="{StaticResource SurfaceColor}"/>
+            <Setter Property="Foreground" Value="#DEDEE4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="AlternationIndex" Value="1">
+                    <Setter Property="Background" Value="#232327"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceHoverColor}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SurfaceSelectedColor}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HubTabItemStyle" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextColor}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceHoverColor}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceSelectedColor}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="Panel.ZIndex" Value="10"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="18" Background="{StaticResource BackgroundDark}" BorderBrush="{StaticResource PrimaryColor}" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="42"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{StaticResource BackgroundMedium}" CornerRadius="18,18,0,0" MouseLeftButtonDown="TopBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="Diagnóstico — análise Fatura × Over" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+                    <Button Content="✕" Width="42" Height="42" HorizontalAlignment="Right" Background="Transparent" Foreground="White" BorderThickness="0" Cursor="Hand" Click="Close_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="CloseBorder" Background="{TemplateBinding Background}" CornerRadius="0,18,0,0">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="CloseBorder" Property="Background" Value="{StaticResource CloseButtonHover}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="22">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="Diagnóstico — Fatura × Over" Foreground="White" FontSize="21" FontWeight="Bold"/>
+                    <TextBlock Text="Vínculo, composição, comparação principal e contexto temporal ficam separados para cada regra continuar rastreável." Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <TabControl x:Name="DiagnosticoTabControl" Grid.Row="2" Background="Transparent" BorderThickness="0" Padding="0">
+                    <TabItem Header="Vínculos" Style="{StaticResource HubTabItemStyle}">
+                        <Grid Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Direção" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <ComboBox x:Name="DirecaoComboBox" Height="36" Style="{StaticResource HubComboBoxStyle}" SelectionChanged="DirecaoComboBox_SelectionChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Pesquisar certificado, nome, status, origem ou destino" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <TextBox x:Name="PesquisaTextBox" Height="36" Style="{StaticResource HubTextBoxStyle}" TextChanged="PesquisaTextBox_TextChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Abrir" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <Button x:Name="BtnVerComposicao" Content="Ver composição" Style="{StaticResource SecondaryButtonStyle}" Height="36" MinWidth="126" IsEnabled="False" Click="VerComposicao_Click"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Row="2" Background="{StaticResource BackgroundMedium}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock x:Name="ResumoText" Foreground="{StaticResource SuccessColor}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="DetalhesText" Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="FiltroResultadoText" Grid.Column="1" Foreground="#BEBEC5" FontSize="11" VerticalAlignment="Center" Margin="18,0,0,0"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="4" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                                <DataGrid x:Name="VinculosDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="32" ColumnHeaderHeight="32" EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True" SelectedCellsChanged="VinculosDataGrid_SelectedCellsChanged" MouseDoubleClick="VinculosDataGrid_MouseDoubleClick">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Direção" Binding="{Binding Direcao}" Width="110"/>
+                                        <DataGridTemplateColumn Header="Status" Width="145">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Status}" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#DEDEE4"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="EncontradoUnico"><Setter Property="Foreground" Value="{StaticResource SuccessColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="EncontradoPorNome"><Setter Property="Foreground" Value="{StaticResource FoundByNameColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Ambiguo"><Setter Property="Foreground" Value="{StaticResource WarningColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="NaoEncontrado"><Setter Property="Foreground" Value="{StaticResource ErrorColor}"/></DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Certif." Binding="{Binding Certificado}" Width="105"/>
+                                        <DataGridTextColumn Header="Nome origem" Binding="{Binding NomeOrigem}" Width="250"/>
+                                        <DataGridTextColumn Header="Nome encontrado" Binding="{Binding NomeDestino}" Width="250"/>
+                                        <DataGridTextColumn Header="Cand. cert." Binding="{Binding CandidatosCertificado}" Width="82"/>
+                                        <DataGridTextColumn Header="Cand. nome" Binding="{Binding CandidatosNome}" Width="82"/>
+                                        <DataGridTextColumn Header="Lanç. origem" Binding="{Binding LancamentosOrigem}" Width="92"/>
+                                        <DataGridTextColumn Header="Origem" Binding="{Binding Origem}" Width="330"/>
+                                        <DataGridTextColumn Header="Destino / candidatos" Binding="{Binding Destino}" Width="380"/>
+                                        <DataGridTextColumn Header="Observação" Binding="{Binding Observacao}" Width="460"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <TabItem Header="Composição dos valores" Style="{StaticResource HubTabItemStyle}">
+                        <Grid Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Pesquisar beneficiário ou certificado" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <TextBox x:Name="PesquisaComposicaoTextBox" Height="36" Style="{StaticResource HubTextBoxStyle}" TextChanged="PesquisaComposicaoTextBox_TextChanged"/>
+                                </StackPanel>
+                                <TextBlock x:Name="ComposicaoFiltroResultadoText" Grid.Column="1" Foreground="#BEBEC5" FontSize="11" VerticalAlignment="Bottom" Margin="18,0,0,10"/>
+                            </Grid>
+
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="330"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                                    <DataGrid x:Name="ComposicoesDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="32" ColumnHeaderHeight="32" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectedCellsChanged="ComposicoesDataGrid_SelectedCellsChanged">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Certif." Binding="{Binding Certificado}" Width="100"/>
+                                            <DataGridTextColumn Header="Beneficiário" Binding="{Binding Nome}" Width="*"/>
+                                            <DataGridTextColumn Header="Vínculo" Binding="{Binding Status}" Width="125"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+
+                                <Grid Grid.Column="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="10"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="10"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Border Background="{StaticResource BackgroundMedium}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                                        <StackPanel>
+                                            <TextBlock x:Name="ComposicaoTituloText" Text="Selecione um beneficiário" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ComposicaoResumoText" Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            <TextBlock x:Name="ComposicaoOrigemText" Foreground="#BEBEC5" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Grid Grid.Row="2">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="6"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Componentes da Fatura" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                                            <TextBlock x:Name="TotalFaturaText" Grid.Column="1" Foreground="{StaticResource SuccessColor}" FontSize="11"/>
+                                        </Grid>
+                                        <Border Grid.Row="2" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                                            <DataGrid x:Name="ComponentesFaturaDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="All" RowHeight="30" ColumnHeaderHeight="30" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Pág. PDF" Binding="{Binding PaginaPdf}" Width="72"/>
+                                                    <DataGridTextColumn Header="Pág. Fat." Binding="{Binding PaginaFatura}" Width="72"/>
+                                                    <DataGridTextColumn Header="Subfat." Binding="{Binding Subfatura}" Width="68"/>
+                                                    <DataGridTextColumn Header="Entidade" Binding="{Binding Entidade}" Width="120"/>
+                                                    <DataGridTextColumn Header="MOV" Binding="{Binding Movimento}" Width="58"/>
+                                                    <DataGridTextColumn Header="Competência" Binding="{Binding Competencia}" Width="90"/>
+                                                    <DataGridTextColumn Header="Natureza" Binding="{Binding Natureza}" Width="190"/>
+                                                    <DataGridTextColumn Header="Plano" Binding="{Binding Plano}" Width="90"/>
+                                                    <DataGridTextColumn Header="Valor" Binding="{Binding Valor}" Width="95"/>
+                                                    <DataGridTextColumn Header="Participação" Binding="{Binding Participacao}" Width="95"/>
+                                                    <DataGridTextColumn Header="Texto origem" Binding="{Binding TextoOrigem}" Width="360"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Border>
+                                    </Grid>
+
+                                    <Grid Grid.Row="4">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="6"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Componentes do Over" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                <TextBlock x:Name="TotalOverText" Foreground="{StaticResource SuccessColor}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                                <TextBlock x:Name="TotalOverAuxText" Foreground="{StaticResource MutedTextColor}" FontSize="10" Margin="0,2,0,0" HorizontalAlignment="Right"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <Border Grid.Row="2" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                                            <DataGrid x:Name="ComponentesOverDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="All" RowHeight="30" ColumnHeaderHeight="30" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                <DataGrid.RowStyle>
+                                                    <Style TargetType="DataGridRow">
+                                                        <Setter Property="Background" Value="{StaticResource SurfaceColor}"/>
+                                                        <Setter Property="Foreground" Value="#DEDEE4"/>
+                                                        <Setter Property="BorderThickness" Value="0"/>
+                                                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="AlternationIndex" Value="1">
+                                                                <Setter Property="Background" Value="#232327"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{StaticResource SurfaceHoverColor}"/>
+                                                            </Trigger>
+                                                            <DataTrigger Binding="{Binding IgnoradoNoComparavel}" Value="True">
+                                                                <Setter Property="Opacity" Value="0.42"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource MutedTextColor}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DataGrid.RowStyle>
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Linha" Binding="{Binding Linha}" Width="68"/>
+                                                    <DataGridTextColumn Header="Evento" Binding="{Binding Evento}" Width="72"/>
+                                                    <DataGridTextColumn Header="Descrição" Binding="{Binding Descricao}" Width="270"/>
+                                                    <DataGridTextColumn Header="Competência" Binding="{Binding Competencia}" Width="90"/>
+                                                    <DataGridTextColumn Header="Natureza" Binding="{Binding Natureza}" Width="165"/>
+                                                    <DataGridTextColumn Header="Uso na comparação" Binding="{Binding UsoComparacao}" Width="155"/>
+                                                    <DataGridTextColumn Header="PV" Binding="{Binding PV}" Width="95"/>
+                                                    <DataGridTextColumn Header="NET" Binding="{Binding NET}" Width="95"/>
+                                                    <DataGridTextColumn Header="Over" Binding="{Binding Over}" Width="95"/>
+                                                    <DataGridTextColumn Header="Entidade" Binding="{Binding Entidade}" Width="120"/>
+                                                    <DataGridTextColumn Header="Matrícula" Binding="{Binding Matricula}" Width="160"/>
+                                                    <DataGridTextColumn Header="Cartão" Binding="{Binding Cartao}" Width="150"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Border>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </TabItem>
+
+                    <TabItem Header="Comparação principal" Style="{StaticResource HubTabItemStyle}">
+                        <Grid Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Categoria" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <ComboBox x:Name="CategoriaComparacaoComboBox" Height="36" Style="{StaticResource HubComboBoxStyle}" SelectionChanged="CategoriaComparacaoComboBox_SelectionChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Pesquisar certificado, beneficiário ou origem" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <TextBox x:Name="PesquisaComparacaoTextBox" Height="36" Style="{StaticResource HubTextBoxStyle}" TextChanged="PesquisaComparacaoTextBox_TextChanged"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Row="2" Background="{StaticResource BackgroundMedium}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock x:Name="ComparacaoResumoText" Foreground="{StaticResource SuccessColor}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock Text="Somente faturas do mês passado × Over do mesmo mês. NET sem IOF. Sem tolerância e sem consultar meses seguintes." Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="ComparacaoFiltroResultadoText" Grid.Column="1" Foreground="#BEBEC5" FontSize="11" VerticalAlignment="Center" Margin="18,0,0,0"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="4" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                                <DataGrid x:Name="ComparacaoDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="32" ColumnHeaderHeight="32" EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Categoria" Width="175">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Categoria}" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#DEDEE4"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="Valor compatível"><Setter Property="Foreground" Value="{StaticResource SuccessColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="Ambíguo"><Setter Property="Foreground" Value="{StaticResource WarningColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="Valor maior na fatura"><Setter Property="Foreground" Value="{StaticResource ErrorColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="Valor maior no Over"><Setter Property="Foreground" Value="{StaticResource ErrorColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="Não encontrado na fatura"><Setter Property="Foreground" Value="{StaticResource ErrorColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="Não encontrado no Over"><Setter Property="Foreground" Value="{StaticResource ErrorColor}"/></DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Certif." Binding="{Binding Certificado}" Width="105"/>
+                                        <DataGridTextColumn Header="Beneficiário" Binding="{Binding Beneficiario}" Width="250"/>
+                                        <DataGridTextColumn Header="Vínculo" Binding="{Binding Vinculo}" Width="135"/>
+                                        <DataGridTextColumn Header="Fatura" Binding="{Binding ValorFatura}" Width="100"/>
+                                        <DataGridTextColumn Header="Over NET" Binding="{Binding ValorOver}" Width="100"/>
+                                        <DataGridTextColumn Header="Dif. Fatura - Over" Binding="{Binding Diferenca}" Width="125"/>
+                                        <DataGridTextColumn Header="Origem Fatura" Binding="{Binding OrigemFatura}" Width="330"/>
+                                        <DataGridTextColumn Header="Origem Over" Binding="{Binding OrigemOver}" Width="330"/>
+                                        <DataGridTextColumn Header="Observação" Binding="{Binding Observacao}" Width="400"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <TabItem Header="Contexto temporal" Style="{StaticResource HubTabItemStyle}">
+                        <Grid Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="250"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Situação" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <ComboBox x:Name="ContextoStatusComboBox" Height="36" Style="{StaticResource HubComboBoxStyle}" SelectionChanged="ContextoStatusComboBox_SelectionChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Pesquisar certificado, beneficiário, movimento ou evidência" Foreground="#BEBEC5" FontSize="11" Margin="0,0,0,5"/>
+                                    <TextBox x:Name="PesquisaContextoTextBox" Height="36" Style="{StaticResource HubTextBoxStyle}" TextChanged="PesquisaContextoTextBox_TextChanged"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Row="2" Background="{StaticResource BackgroundMedium}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock x:Name="ContextoResumoText" Foreground="{StaticResource SuccessColor}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="ContextoDetalhesText" Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="ContextoFiltroResultadoText" Grid.Column="1" Foreground="#BEBEC5" FontSize="11" VerticalAlignment="Center" Margin="18,0,0,0"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="4" Background="{StaticResource SurfaceColor}" BorderBrush="#44444B" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                                <DataGrid x:Name="ContextoDataGrid" local:DataGridCopiavelBehavior.Habilitado="True" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" HeadersVisibility="Column" GridLinesVisibility="All" AlternationCount="2" RowHeight="32" ColumnHeaderHeight="32" EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{StaticResource SurfaceColor}" Foreground="#DEDEE4" HorizontalGridLinesBrush="{StaticResource GridBorderColor}" VerticalGridLinesBrush="{StaticResource GridBorderColor}" BorderThickness="0" RowHeaderWidth="0" SelectionMode="Extended" SelectionUnit="Cell" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Categoria original" Binding="{Binding CategoriaOriginal}" Width="170"/>
+                                        <DataGridTemplateColumn Header="Contexto" Width="220">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding StatusContexto}" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#DEDEE4"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Explicada}" Value="True"><Setter Property="Foreground" Value="{StaticResource SuccessColor}"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding DivergenciaPermanece}" Value="True"><Setter Property="Foreground" Value="{StaticResource ErrorColor}"/></DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Certif." Binding="{Binding Certificado}" Width="105"/>
+                                        <DataGridTextColumn Header="Beneficiário" Binding="{Binding Beneficiario}" Width="250"/>
+                                        <DataGridTextColumn Header="Fatura original" Binding="{Binding ValorFatura}" Width="100"/>
+                                        <DataGridTextColumn Header="Over original" Binding="{Binding ValorOver}" Width="100"/>
+                                        <DataGridTextColumn Header="Dif. original" Binding="{Binding DiferencaOriginal}" Width="100"/>
+                                        <DataGridTextColumn Header="Ajustes contexto" Binding="{Binding AjustesContexto}" Width="110"/>
+                                        <DataGridTextColumn Header="Meses contexto" Binding="{Binding MesesContexto}" Width="130"/>
+                                        <DataGridTextColumn Header="MOV" Binding="{Binding Movimentos}" Width="105"/>
+                                        <DataGridTextColumn Header="Situação final" Binding="{Binding SituacaoFinal}" Width="100"/>
+                                        <DataGridTextColumn Header="Evidências" Binding="{Binding Evidencias}" Width="520"/>
+                                        <DataGridTextColumn Header="Observação" Binding="{Binding Observacao}" Width="430"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                </TabControl>
+
+                <Grid Grid.Row="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="TestesText" Foreground="{StaticResource WarningColor}" FontSize="11" TextWrapping="Wrap" Margin="0,0,20,0"/>
+                        <TextBlock x:Name="ConsolidacaoTestesText" Foreground="{StaticResource WarningColor}" FontSize="11" TextWrapping="Wrap" Margin="0,3,20,0"/>
+                        <TextBlock x:Name="ComparacaoTestesText" Foreground="{StaticResource WarningColor}" FontSize="11" TextWrapping="Wrap" Margin="0,3,20,0"/>
+                        <TextBlock x:Name="ContextoTestesText" Foreground="{StaticResource WarningColor}" FontSize="11" TextWrapping="Wrap" Margin="0,3,20,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" MinWidth="100" Click="Close_Click"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

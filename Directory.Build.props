@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Outlook Interop antigo: warning de compatibilidade conhecido e aceito neste projeto Windows/WPF. -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+</Project>
