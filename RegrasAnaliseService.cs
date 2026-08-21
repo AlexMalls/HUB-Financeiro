@@ -126,8 +126,21 @@ internal abstract class RegraAnaliseBase : IRegraAnalise
             valorDevolucao: valorDevolucao,
             diasEquivalentesDevolucao: diasEquivalentesDevolucao);
 
-    protected RegraAnaliseResultado Explicada(string condicao, string dados, string justificativa, IEnumerable<string> evidencias)
-        => Resultado(RegraAnaliseStatus.Explicada, condicao, dados, justificativa, evidencias);
+    protected RegraAnaliseResultado Explicada(
+        string condicao,
+        string dados,
+        string justificativa,
+        IEnumerable<string> evidencias,
+        decimal? valorDevolucao = null,
+        int? diasEquivalentesDevolucao = null)
+        => Resultado(
+            RegraAnaliseStatus.Explicada,
+            condicao,
+            dados,
+            justificativa,
+            evidencias,
+            valorDevolucao: valorDevolucao,
+            diasEquivalentesDevolucao: diasEquivalentesDevolucao);
 
     protected RegraAnaliseResultado Atencao(string condicao, string dados, string justificativa, IEnumerable<string> evidencias)
         => Resultado(RegraAnaliseStatus.RevisaoManual, condicao, dados, justificativa, evidencias, sinalizaAtencao: true);
@@ -368,7 +381,7 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         if (mensalidadeBase <= 0m)
         {
             string justificativaSemBase = direcionarParaAtencao
-                ? "Devolução posterior da competência analisada identificada na Bradesco. Como a opção Ignorar clientes cancelados está marcada, o caso foi considerado cancelado e direcionado para Atenção independentemente do valor devolvido."
+                ? "Devolução posterior da competência analisada identificada na Bradesco. Não foi possível validar a proporcionalidade de 15 ou 16 dias porque a mensalidade-base não foi localizada; o caso foi direcionado para Atenção."
                 : $"Há devolução da Bradesco referente a {competencia:MM/yyyy}, mas não foi possível calcular os dias equivalentes porque não foi identificada uma mensalidade-base positiva. A ocorrência permanece como Divergência para conferência manual.";
 
             return direcionarParaAtencao
@@ -390,6 +403,13 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
             devolvido);
         bool dentroTolerancia =
             AnaliseFaturasRegrasComparacao.DentroToleranciaComparacaoPrincipal(diferenca);
+        DateTime? dataInicio = contexto.DadosFatura?.DataInicio;
+        bool vigenciaDia15 = dataInicio?.Day == 15;
+        bool devolucaoCompativelComVigencia =
+            direcionarParaAtencao &&
+            vigenciaDia15 &&
+            dentroTolerancia &&
+            dias is 15 or 16;
 
         string plural = dias == 1 ? "dia" : "dias";
         string resultadoTolerancia = dentroTolerancia
@@ -397,7 +417,7 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
             : $"fora da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}";
         string justificativa = direcionarParaAtencao
             ? $"Devolução posterior de R$ {devolvido:N2} referente à competência analisada identificada na Bradesco. " +
-              "Como a opção Ignorar clientes cancelados está marcada, o caso foi considerado cancelado e direcionado para Atenção independentemente do valor devolvido."
+              "O caso não atendeu simultaneamente aos critérios de vigência no dia 15 e devolução proporcional de 15 ou 16 dias; por isso foi direcionado para Atenção."
             : $"Estimativa: o valor devolvido pela Bradesco equivale financeiramente a {dias} {plural} em uma base fixa de 30 dias. " +
               $"Mensalidade-base: R$ {mensalidadeBase:N2}; valor diário em base de 30 dias: R$ {valorDia:N4}; " +
               $"{dias} {plural}: R$ {proporcional:N2}; devolução encontrada: R$ {devolvido:N2}; " +
@@ -407,6 +427,20 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
 
         string dados =
             $"Mensalidade-base R$ {mensalidadeBase:N2} / 30; devolução R$ {devolvido:N2}; dias equivalentes {dias}; valor proporcional R$ {proporcional:N2}; diferença R$ {diferenca:N2}; {resultadoTolerancia}.";
+
+        if (devolucaoCompativelComVigencia)
+        {
+            return Explicada(
+                condicao,
+                dados,
+                $"Cliente com vigência no dia 15, identificada pela data de início {dataInicio!.Value:dd/MM/yyyy}. " +
+                $"A devolução posterior de R$ {devolvido:N2} equivale a {dias} dias da mensalidade de R$ {mensalidadeBase:N2}, " +
+                $"com diferença de R$ {diferenca:N2}, dentro da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}. " +
+                "O valor é compatível com o encerramento do ciclo de vigência de 15 a 14 e foi considerado correto.",
+                evidencias,
+                devolvido,
+                dias);
+        }
 
         if (direcionarParaAtencao)
         {

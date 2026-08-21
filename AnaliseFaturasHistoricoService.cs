@@ -326,10 +326,21 @@ public sealed class AnaliseFaturasHistoricoService
         if (!string.IsNullOrWhiteSpace(pastaAnalise) &&
             !string.Equals(pastaAnalise, _pastaHistorico, StringComparison.OrdinalIgnoreCase))
         {
-            Directory.Delete(pastaAnalise, recursive: true);
+            // Retira primeiro a análise da pasta visível. Assim, mesmo que algum PDF ou
+            // Excel esteja temporariamente bloqueado pelo OneDrive, ela desaparece do
+            // histórico e a exclusão física pode ser concluída em uma tentativa posterior.
+            string pastaExclusaoPendente = Path.Combine(
+                _pastaHistorico,
+                $".__del_{Guid.NewGuid():N}");
+            Directory.Move(pastaAnalise, pastaExclusaoPendente);
+            TentarExcluirDiretorio(pastaExclusaoPendente);
         }
         else
         {
+            FileAttributes atributos = File.GetAttributes(caminho);
+            if ((atributos & FileAttributes.ReadOnly) != 0)
+                File.SetAttributes(caminho, atributos & ~FileAttributes.ReadOnly);
+
             File.Delete(caminho);
         }
 
@@ -407,6 +418,8 @@ public sealed class AnaliseFaturasHistoricoService
     {
         if (!Directory.Exists(_pastaHistorico))
             return Array.Empty<AnaliseFaturasHistoricoResumo>();
+
+        TentarLimparExclusoesPendentes();
 
         List<string> snapshots = Directory.EnumerateFiles(_pastaHistorico, "analise_*.json", SearchOption.AllDirectories)
             .Where(x => !Path.GetRelativePath(_pastaHistorico, x)
@@ -596,6 +609,24 @@ public sealed class AnaliseFaturasHistoricoService
         {
             // OneDrive ou um visualizador pode manter algum arquivo bloqueado.
             // A pasta começa com ".__" e é ignorada pela listagem do histórico.
+        }
+    }
+
+    private void TentarLimparExclusoesPendentes()
+    {
+        try
+        {
+            foreach (string pasta in Directory.EnumerateDirectories(
+                         _pastaHistorico,
+                         ".__del_*",
+                         SearchOption.TopDirectoryOnly))
+            {
+                TentarExcluirDiretorio(pasta);
+            }
+        }
+        catch
+        {
+            // A listagem do histórico não depende da limpeza física das exclusões pendentes.
         }
     }
 
