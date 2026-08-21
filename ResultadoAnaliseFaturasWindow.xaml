@@ -388,7 +388,7 @@
                             <DataGridTextColumn Header="Certificado" Binding="{Binding Certificado}" Width="110" IsReadOnly="True" />
                             <DataGridTextColumn Header="Tipo de divergência" Binding="{Binding TipoDivergencia}" Width="170" IsReadOnly="True" />
                             <DataGridTextColumn Header="Diferença" Binding="{Binding Diferenca}" Width="100" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Valor Fatura" Binding="{Binding ValorFatura}" Width="105" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Fatura líquida" Binding="{Binding ValorFatura}" Width="110" IsReadOnly="True" />
                             <DataGridTextColumn Header="Valor Over" Binding="{Binding ValorOver}" Width="105" IsReadOnly="True" />
                             <DataGridTextColumn Header="Entidade" Binding="{Binding Entidade}" Width="140" IsReadOnly="True" />
                             <DataGridTextColumn Header="Competência" Binding="{Binding Competencia}" Width="95" IsReadOnly="True" />

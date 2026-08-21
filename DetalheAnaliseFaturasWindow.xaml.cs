@@ -9,11 +9,13 @@ namespace HubFinanceiro;
 public partial class DetalheAnaliseFaturasWindow : Window
 {
     private readonly AnaliseFinalResultado _resultado;
+    private readonly AnaliseFaturasVisaoFinanceira _visaoFinanceira;
 
     public DetalheAnaliseFaturasWindow(AnaliseFinalResultado resultado)
     {
         InitializeComponent();
         _resultado = resultado ?? throw new ArgumentNullException(nameof(resultado));
+        _visaoFinanceira = AnaliseFaturasVisaoFinanceiraService.Calcular(_resultado);
         Carregar();
     }
 
@@ -32,9 +34,12 @@ public partial class DetalheAnaliseFaturasWindow : Window
             : AnaliseFinalService.TraduzirStatus(_resultado.Status);
         BeneficiarioText.Text = _resultado.Beneficiario;
         SubtituloText.Text = $"{_resultado.Certificado}  •  {_resultado.TipoDivergencia}  •  {_resultado.Competencia:MM/yyyy}";
+        string justificativaFinanceira = _visaoFinanceira.ReconstruidaDeHistoricoLegado
+            ? _visaoFinanceira.CriarResumo(_resultado.ValorFatura, _resultado.ValorOver)
+            : _resultado.JustificativaFinal;
         JustificativaText.Text = string.IsNullOrWhiteSpace(_resultado.JustificativaManual)
-            ? _resultado.JustificativaFinal
-            : $"Explicação manual: {_resultado.JustificativaManual}\n{_resultado.JustificativaFinal}";
+            ? justificativaFinanceira
+            : $"Explicação manual: {_resultado.JustificativaManual}\n{justificativaFinanceira}";
         StatusText.Text = status;
         StatusText.Foreground = _resultado.Status switch
         {
@@ -44,17 +49,14 @@ public partial class DetalheAnaliseFaturasWindow : Window
             AnaliseFinalStatus.Ambiguo => new SolidColorBrush(Color.FromRgb(242, 200, 121)),
             _ => new SolidColorBrush(Color.FromRgb(255, 119, 119))
         };
-        // HUB_TELA_RESIDUAL_V3
-        // A tela apenas EXIBE o que o motor calculou.
-        // VersaoCalculo 0 = historico legado: nao tenta reconstruir valores.
-        if (_resultado.VersaoCalculo >= 3 && _resultado.DiferencaOriginal.HasValue)
+        if (_visaoFinanceira.PossuiAjusteContexto && _visaoFinanceira.DiferencaOriginal.HasValue)
         {
             ValoresText.Text =
                 $"Fatura {Fmt(_resultado.ValorFatura)}  •  Over {Fmt(_resultado.ValorOver)}  •  " +
-                $"Dif. original {Fmt(_resultado.DiferencaOriginal)}  •  " +
-                $"Ajustes {_resultado.AjusteContextoFinanceiro:N2}  •  " +
-                $"Fatura líquida {Fmt(_resultado.ValorFaturaAjustado)}  •  " +
-                $"Diferença residual {Fmt(_resultado.DiferencaResidual)}";
+                $"Dif. original {Fmt(_visaoFinanceira.DiferencaOriginal)}  •  " +
+                $"Ajustes {_visaoFinanceira.AjusteContexto:N2}  •  " +
+                $"Fatura líquida {Fmt(_visaoFinanceira.ValorFaturaLiquida)}  •  " +
+                $"Diferença residual {Fmt(_visaoFinanceira.DiferencaResidual)}";
         }
         else
         {
@@ -89,14 +91,13 @@ public partial class DetalheAnaliseFaturasWindow : Window
         else
         {
             ContextoResumoText.Text =
-                _resultado.VersaoCalculo >= 3 &&
-                _resultado.DiferencaOriginal.HasValue &&
-                _resultado.AjusteContextoFinanceiro != 0m
+                _visaoFinanceira.PossuiAjusteContexto &&
+                _visaoFinanceira.DiferencaOriginal.HasValue
                     ? $"Status: {_resultado.ContextoTemporal.Status}  •  " +
-                      $"Diferença original: R$ {_resultado.DiferencaOriginal.Value:N2}  •  " +
-                      $"Ajuste aplicado: R$ {_resultado.AjusteContextoFinanceiro:N2}  •  " +
-                      $"Fatura líquida: {Fmt(_resultado.ValorFaturaAjustado)}  •  " +
-                      $"Diferença residual: {Fmt(_resultado.DiferencaResidual)}"
+                      $"Diferença original: R$ {_visaoFinanceira.DiferencaOriginal.Value:N2}  •  " +
+                      $"Ajuste aplicado: R$ {_visaoFinanceira.AjusteContexto:N2}  •  " +
+                      $"Fatura líquida: {Fmt(_visaoFinanceira.ValorFaturaLiquida)}  •  " +
+                      $"Diferença residual: {Fmt(_visaoFinanceira.DiferencaResidual)}"
                     : $"Status: {_resultado.ContextoTemporal.Status}  •  {_resultado.ContextoTemporal.Observacao}";
             ContextoDataGrid.ItemsSource = _resultado.ContextoTemporal.Evidencias.Select(x => new
             {
@@ -179,8 +180,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
                     Plano = "—",
                     Valor = x.Valor.ToString("N2"),
                     Participacao = "—",
-                    Uso = _resultado.VersaoCalculo >= 3 &&
-                          EhAjusteContextoAplicado(x, _resultado.Competencia)
+                    Uso = AnaliseFaturasVisaoFinanceiraService.EhAjusteContextoAplicado(x, _resultado.Competencia)
                         ? "Contexto temporal — aplicado à diferença residual"
                         : "Contexto temporal — evidência, não aplicada à diferença residual",
                     TextoOrigem = $"{VazioComoTraco(x.Arquivo)} • pág. {x.PaginaPdf}",
@@ -282,8 +282,10 @@ public partial class DetalheAnaliseFaturasWindow : Window
 
         LancamentosOrigemText.Text = $"Fatura(s): {VazioComoTraco(arquivosFatura)}   |   Over: {VazioComoTraco(_resultado.OrigemOver)}";
 
-        LancamentosTotalFaturaText.Text =
-            $"Valor comparável: {Fmt(_resultado.ValorFatura)}  •  Bruto: {brutoFatura:N2}";
+        LancamentosTotalFaturaText.Text = _visaoFinanceira.PossuiAjusteContexto
+            ? $"Original: {Fmt(_resultado.ValorFatura)}  •  Ajustes: {_visaoFinanceira.AjusteContexto:N2}  •  " +
+              $"Fatura líquida: {Fmt(_visaoFinanceira.ValorFaturaLiquida)}  •  Bruto: {brutoFatura:N2}"
+            : $"Valor comparável: {Fmt(_resultado.ValorFatura)}  •  Bruto: {brutoFatura:N2}";
         LancamentosTotalFaturaAuxText.Text =
             $"Comp. anteriores ignoradas: {competenciasAnterioresIgnoradas:N2}  •  Participação: {participacaoFatura:N2}  •  Contexto: {quantidadeContexto:N0} lançamento(s)";
 
@@ -292,63 +294,6 @@ public partial class DetalheAnaliseFaturasWindow : Window
             $"NET bruto: {netBruto:N2}  •  IOF ignorado: {iofIgnorado:N2}  •  Copart ignorada: {copartIgnorada:N2}  •  PV: {pvBruto:N2}  •  Over: {overBruto:N2}";
     }
 
-    private static bool EhAjusteContextoAplicado(
-        ContextoTemporalEvidencia evidencia,
-        DateTime competenciaAnalisada)
-    {
-        DateTime competenciaBase = new(
-            competenciaAnalisada.Year,
-            competenciaAnalisada.Month,
-            1);
-
-        DateTime competenciaFatura = new(
-            evidencia.CompetenciaFatura.Year,
-            evidencia.CompetenciaFatura.Month,
-            1);
-
-        DateTime competenciaLancamento = new(
-            evidencia.CompetenciaLancamento.Year,
-            evidencia.CompetenciaLancamento.Month,
-            1);
-
-        return competenciaFatura > competenciaBase &&
-               competenciaLancamento == competenciaBase;
-    }
-
-    private bool TentarCalcularAjusteContextoFinanceiroDetalhe(out decimal ajuste)
-    {
-        ajuste = 0m;
-
-        if (_resultado.ContextoTemporal?.Evidencias == null ||
-            _resultado.ContextoTemporal.Evidencias.Count == 0)
-        {
-            return false;
-        }
-
-        var aplicaveis = _resultado.ContextoTemporal.Evidencias
-            .Where(x => EhAjusteContextoAplicado(x, _resultado.Competencia))
-            .GroupBy(x => new
-            {
-                x.CompetenciaFatura,
-                x.CompetenciaLancamento,
-                x.Subfatura,
-                x.Movimento,
-                x.Valor,
-                x.Entidade,
-                x.Arquivo,
-                x.PaginaPdf
-            })
-            .Select(g => g.First())
-            .ToList();
-
-        if (aplicaveis.Count == 0)
-            return false;
-
-        ajuste = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
-            aplicaveis.Sum(x => x.Valor));
-
-        return ajuste != 0m;
-    }
     private static bool EhIgnoradoNoComparavel(string? regra)
         => !string.IsNullOrWhiteSpace(regra) &&
            regra.Contains("ignor", StringComparison.OrdinalIgnoreCase);
