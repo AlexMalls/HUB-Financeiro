@@ -228,8 +228,15 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         List<ComponenteOver> cancelamentosOver = contexto.ComponentesOver
             .Where(EhDevolucaoCancelamentoOver)
             .ToList();
+        bool overVinculadoComValorZerado =
+            contexto.ComponentesOver.Count > 0 &&
+            contexto.Comparacao.ValorOverComparavel.HasValue &&
+            AnaliseFaturasRegrasComparacao.DentroToleranciaComparacaoPrincipal(
+                contexto.Comparacao.ValorOverComparavel.Value);
         evidencias.AddRange(cancelamentosOver.Select(x =>
             $"Over • evento {VazioComoTraco(x.Evento)} • {VazioComoTraco(x.Descricao)} • NET {(x.ValorNET ?? 0m):N2} • linha {x.NumeroLinha}"));
+        if (overVinculadoComValorZerado)
+            evidencias.Add("Over • beneficiário vinculado com valor comparável de R$ 0,00");
 
         foreach (ComponenteFatura componente in contexto.TodosComponentesFatura)
         {
@@ -275,7 +282,7 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
             Math.Abs(valoresDevolucao.Sum()));
         bool direcionarParaAtencao =
             contexto.IgnorarClientesCancelados &&
-            cancelamentosOver.Count > 0 &&
+            (cancelamentosOver.Count > 0 || overVinculadoComValorZerado) &&
             bradescoDevolveuDepois;
 
         if (!categoriaPermiteEstimativa && !direcionarParaAtencao)
@@ -289,7 +296,7 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         if (mensalidadeBase <= 0m)
         {
             string justificativaSemBase = direcionarParaAtencao
-                ? "Cancelamento negativo identificado no Over e devolução posterior identificada na Bradesco. Como a opção Ignorar clientes cancelados está marcada, o caso foi direcionado para Atenção independentemente do valor devolvido."
+                ? "Indício de cancelamento identificado no Over e devolução posterior identificada na Bradesco. Como a opção Ignorar clientes cancelados está marcada, o caso foi direcionado para Atenção independentemente do valor devolvido."
                 : $"Há devolução da Bradesco referente a {competencia:MM/yyyy}, mas não foi possível calcular os dias equivalentes porque não foi identificada uma mensalidade-base positiva. A ocorrência permanece como Divergência para conferência manual.";
 
             return direcionarParaAtencao
@@ -317,7 +324,7 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
             ? $"dentro da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}"
             : $"fora da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}";
         string justificativa = direcionarParaAtencao
-            ? $"Cancelamento negativo identificado no Over e devolução posterior de R$ {devolvido:N2} identificada na Bradesco. " +
+            ? $"Indício de cancelamento identificado no Over e devolução posterior de R$ {devolvido:N2} identificada na Bradesco. " +
               "Como a opção Ignorar clientes cancelados está marcada, o caso foi direcionado para Atenção independentemente do valor devolvido."
             : $"Estimativa: o valor devolvido pela Bradesco equivale financeiramente a {dias} {plural} em uma base fixa de 30 dias. " +
               $"Mensalidade-base: R$ {mensalidadeBase:N2}; valor diário em base de 30 dias: R$ {valorDia:N4}; " +
