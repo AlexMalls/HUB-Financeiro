@@ -1018,6 +1018,18 @@ public partial class IncluirAnaliseFaturaWindow : Window
                     ignorarClientesCancelados,
                     DateTime.Now);
 
+            try
+            {
+                var explicacoesRecorrentes = new AnaliseFaturasExplicacaoRecorrenteService(_caminhoBaseData);
+                explicacoesRecorrentes.AplicarEmAnaliseNova(resultadoFinal.Resultados);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.ShowWarning(
+                    "A análise foi concluída, mas as explicações recorrentes não puderam ser aplicadas.\n\n" + ex.Message,
+                    "Explicações recorrentes");
+            }
+
             // O histórico deixou de depender de uma ação manual na tela de resultado.
             // O mesmo clique em Feito conclui, persiste (substituindo a mesma competência)
             // e só então entrega o resultado para a MainWindow abrir.
