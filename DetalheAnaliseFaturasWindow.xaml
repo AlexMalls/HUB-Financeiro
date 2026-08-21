@@ -95,7 +95,17 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock x:Name="BeneficiarioText" Foreground="White" FontSize="18" FontWeight="SemiBold"/>
+                            <TextBox x:Name="BeneficiarioText"
+                                     IsReadOnly="True"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     Foreground="White"
+                                     FontSize="18"
+                                     FontWeight="SemiBold"
+                                     Cursor="IBeam"
+                                     SelectionBrush="#7A3FA0"
+                                     FocusVisualStyle="{x:Null}"/>
                             <TextBlock x:Name="SubtituloText" Foreground="{StaticResource MutedTextColor}" FontSize="11" Margin="0,4,0,0"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right">
