@@ -304,7 +304,12 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         if (linha == null)
             return;
 
-        var janela = new DetalheAnaliseFaturasWindow(linha.Original) { Owner = this };
+        IReadOnlyList<AnaliseFaturasHistoricoArquivo> arquivosUtilizados =
+            _historicoSnapshot?.ArquivosUtilizados ??
+            _historicoContextoCriacao?.ArquivosUtilizados ??
+            Array.Empty<AnaliseFaturasHistoricoArquivo>();
+
+        var janela = new DetalheAnaliseFaturasWindow(linha.Original, arquivosUtilizados) { Owner = this };
         janela.ShowDialog();
     }
 
