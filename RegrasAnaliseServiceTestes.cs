@@ -224,6 +224,20 @@ public static class RegrasAnaliseServiceTestes
             return !r.SinalizaAtencao && r.Resultado == RegraAnaliseStatus.RevisaoManual;
         });
 
+        Testar(testes, "Over vinculado zerado com devolução posterior vai para Atenção", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -919.81m,
+                incluirCancelamentoOver: false,
+                incluirOverZerado: true);
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.RevisaoManual &&
+                   r.ValorDevolucao == 919.81m;
+        });
+
         Testar(testes, "Competência anterior ignorada não participa das exceções", () =>
         {
             var contexto = CriarContexto(100m, new ComponenteFatura
@@ -288,7 +302,8 @@ public static class RegrasAnaliseServiceTestes
     private static RegraAnaliseContexto CriarCasoCancelamento(
         bool ignorarClientesCancelados,
         decimal valorDevolucaoBradesco,
-        bool incluirCancelamentoOver)
+        bool incluirCancelamentoOver,
+        bool incluirOverZerado = false)
     {
         var comparacao = new ComparacaoPrincipalResultado
         {
@@ -297,7 +312,7 @@ public static class RegrasAnaliseServiceTestes
             NomeFatura = "CLIENTE CANCELADA",
             Categoria = ComparacaoPrincipalCategoria.ValorMaiorNaFatura,
             ValorFatura = 3923.69m,
-            ValorOverComparavel = 40.52m,
+            ValorOverComparavel = incluirOverZerado ? 0m : 40.52m,
             DiferencaFaturaMenosOver = 3883.17m
         };
 
@@ -313,6 +328,18 @@ public static class RegrasAnaliseServiceTestes
                     Natureza = "Evento 007"
                 }
             }
+            : incluirOverZerado
+                ? new[]
+                {
+                    new ComponenteOver
+                    {
+                        NumeroLinha = 106,
+                        Evento = "0021",
+                        Descricao = "PLANO CANCELADO COM VALOR ZERADO",
+                        ValorNET = 0m,
+                        Natureza = "Evento 0021"
+                    }
+                }
             : Array.Empty<ComponenteOver>();
 
         return new RegraAnaliseContexto
