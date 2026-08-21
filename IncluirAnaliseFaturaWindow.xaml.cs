@@ -828,7 +828,8 @@ public partial class IncluirAnaliseFaturaWindow : Window
 
     private Task<AnaliseFinalDiagnostico> GerarResultadoFinalAsync(
         bool ignorarCoparticipacao,
-        bool ignorarCompetenciasAnteriores)
+        bool ignorarCompetenciasAnteriores,
+        bool ignorarClientesCancelados)
     {
         return Task.Run(() =>
         {
@@ -868,7 +869,8 @@ public partial class IncluirAnaliseFaturaWindow : Window
                 faturasPassado,
                 over,
                 ignorarCoparticipacao,
-                ignorarCompetenciasAnteriores);
+                ignorarCompetenciasAnteriores,
+                ignorarClientesCancelados);
         });
     }
 
@@ -991,6 +993,7 @@ public partial class IncluirAnaliseFaturaWindow : Window
 
             bool ignorarCoparticipacao = IgnorarCoparticipacaoCheckBox.IsChecked != false;
             bool ignorarCompetenciasAnteriores = IgnorarCompetenciasAnterioresCheckBox.IsChecked != false;
+            bool ignorarClientesCancelados = IgnorarClientesCanceladosCheckBox.IsChecked == true;
 
             // A preparação continua sendo uma área temporária e transacional.
             DefinirValidando(true, "Copiando e conferindo a preparação...");
@@ -1000,7 +1003,8 @@ public partial class IncluirAnaliseFaturaWindow : Window
             DefinirValidando(true, "Gerando o relatório final...");
             AnaliseFinalDiagnostico resultadoFinal = await GerarResultadoFinalAsync(
                 ignorarCoparticipacao,
-                ignorarCompetenciasAnteriores);
+                ignorarCompetenciasAnteriores,
+                ignorarClientesCancelados);
 
             AnaliseFaturasHistoricoContextoCriacao contextoHistorico =
                 AnaliseFaturasHistoricoContextoCriacao.Criar(
@@ -1011,6 +1015,7 @@ public partial class IncluirAnaliseFaturaWindow : Window
                     _relatorioOver!,
                     ignorarCoparticipacao,
                     ignorarCompetenciasAnteriores,
+                    ignorarClientesCancelados,
                     DateTime.Now);
 
             // O histórico deixou de depender de uma ação manual na tela de resultado.

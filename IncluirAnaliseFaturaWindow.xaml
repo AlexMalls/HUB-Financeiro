@@ -870,8 +870,17 @@
                                               IsChecked="True"
                                               Foreground="#D8D8DE"
                                               FontSize="11"
+                                              Margin="0,0,24,0"
                                               VerticalAlignment="Center"
                                               ToolTip="Marcado por padrão: lançamentos da fatura com competência anterior ao mês analisado continuam visíveis nos detalhes, mas não entram no valor comparável. Desmarque para incluí-los."/>
+                                    <CheckBox x:Name="IgnorarClientesCanceladosCheckBox"
+                                              Style="{StaticResource HubCheckBoxStyle}"
+                                              Content="Ignorar clientes cancelados"
+                                              IsChecked="False"
+                                              Foreground="#D8D8DE"
+                                              FontSize="11"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Quando marcado, casos com cancelamento negativo no Over e devolução posterior da Bradesco são enviados para Atenção, independentemente do valor devolvido."/>
                                 </WrapPanel>
                             </Grid>
                         </Border>

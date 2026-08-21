@@ -199,6 +199,31 @@ public static class RegrasAnaliseServiceTestes
                    r.Justificativa.Contains("data de cancelamento", StringComparison.OrdinalIgnoreCase);
         });
 
+        Testar(testes, "Checkbox de cancelados envia para Atenção independentemente do valor", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -1000m,
+                incluirCancelamentoOver: true);
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.RevisaoManual &&
+                   r.ValorDevolucao == 1000m &&
+                   r.Justificativa.Contains("independentemente do valor", StringComparison.OrdinalIgnoreCase);
+        });
+
+        Testar(testes, "Checkbox sem cancelamento no Over mantém a Divergência", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -1000m,
+                incluirCancelamentoOver: false);
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return !r.SinalizaAtencao && r.Resultado == RegraAnaliseStatus.RevisaoManual;
+        });
+
         Testar(testes, "Competência anterior ignorada não participa das exceções", () =>
         {
             var contexto = CriarContexto(100m, new ComponenteFatura
@@ -256,6 +281,77 @@ public static class RegrasAnaliseServiceTestes
                 Certificado = "0000004/00",
                 NomeFatura = "BENEFICIARIO TESTE",
                 ComponentesFatura = componentes.ToList()
+            }
+        };
+    }
+
+    private static RegraAnaliseContexto CriarCasoCancelamento(
+        bool ignorarClientesCancelados,
+        decimal valorDevolucaoBradesco,
+        bool incluirCancelamentoOver)
+    {
+        var comparacao = new ComparacaoPrincipalResultado
+        {
+            IdResultado = "T-CANCELADO",
+            Certificado = "0002728/00",
+            NomeFatura = "CLIENTE CANCELADA",
+            Categoria = ComparacaoPrincipalCategoria.ValorMaiorNaFatura,
+            ValorFatura = 3923.69m,
+            ValorOverComparavel = 40.52m,
+            DiferencaFaturaMenosOver = 3883.17m
+        };
+
+        var componentesOver = incluirCancelamentoOver
+            ? new[]
+            {
+                new ComponenteOver
+                {
+                    NumeroLinha = 3825,
+                    Evento = "007",
+                    Descricao = "DESC. CANCELAMENTO - DIAS NAO UTILIZADOS",
+                    ValorNET = -3792.90m,
+                    Natureza = "Evento 007"
+                }
+            }
+            : Array.Empty<ComponenteOver>();
+
+        return new RegraAnaliseContexto
+        {
+            CompetenciaAnalisada = new DateTime(2026, 6, 1),
+            IgnorarClientesCancelados = ignorarClientesCancelados,
+            Comparacao = comparacao,
+            Composicao = new ComposicaoBeneficiario
+            {
+                Certificado = comparacao.Certificado,
+                NomeFatura = comparacao.NomeFatura,
+                ComponentesFatura = new[]
+                {
+                    new ComponenteFatura
+                    {
+                        Competencia = new DateTime(2026, 6, 1),
+                        Valor = 3923.69m,
+                        ConsiderarNoComparavel = true
+                    }
+                },
+                ComponentesOver = componentesOver
+            },
+            ContextoTemporal = new ContextoTemporalResultado
+            {
+                ComparacaoOriginal = comparacao,
+                Status = ContextoTemporalStatus.ContextoEncontradoSemJustificativa,
+                DivergenciaPermanece = true,
+                Evidencias = new[]
+                {
+                    new ContextoTemporalEvidencia
+                    {
+                        CompetenciaFatura = new DateTime(2026, 8, 1),
+                        CompetenciaLancamento = new DateTime(2026, 6, 1),
+                        Movimento = "CR",
+                        Valor = valorDevolucaoBradesco,
+                        Arquivo = "fatura-agosto.pdf",
+                        PaginaPdf = 5
+                    }
+                }
             }
         };
     }

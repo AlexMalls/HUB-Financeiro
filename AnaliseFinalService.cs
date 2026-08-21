@@ -27,6 +27,7 @@ public sealed class AnaliseFinalDiagnostico
     public int TotalAmbiguos => Resultados.Count(x => x.Status == AnaliseFinalStatus.Ambiguo);
     public bool IgnorandoCoparticipacao { get; init; } = true;
     public bool IgnorandoCompetenciasAnteriores { get; init; } = true;
+    public bool IgnorandoClientesCancelados { get; init; }
     public decimal ToleranciaFinanceiraUtilizada { get; init; } = AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal;
     public int TotalCompativeisPorTolerancia => Resultados.Count(x => x.CompativelPorToleranciaEfetiva);
     public decimal SomaToleranciaFaturaMaior => AnaliseFaturasRegrasComparacao.ArredondarCentavos(
@@ -116,7 +117,8 @@ public sealed class AnaliseFinalService
         IReadOnlyList<FaturaBradescoArquivo> faturasMesPassado,
         OverArquivo overMesPassado,
         bool ignorarCoparticipacao = true,
-        bool ignorarCompetenciasAnteriores = true)
+        bool ignorarCompetenciasAnteriores = true,
+        bool ignorarClientesCancelados = false)
     {
         if (comparacao == null) throw new ArgumentNullException(nameof(comparacao));
         if (consolidacao == null) throw new ArgumentNullException(nameof(consolidacao));
@@ -154,6 +156,7 @@ public sealed class AnaliseFinalService
             var regraContexto = new RegraAnaliseContexto
             {
                 CompetenciaAnalisada = comparacao.CompetenciaAnalisada,
+                IgnorarClientesCancelados = ignorarClientesCancelados,
                 Comparacao = item,
                 Composicao = composicao ?? CriarComposicaoVirtual(item, componentesFatura, componentesOver),
                 ContextoTemporal = contexto,
@@ -393,6 +396,7 @@ public sealed class AnaliseFinalService
             Competencia = comparacao.CompetenciaAnalisada,
             IgnorandoCoparticipacao = ignorarCoparticipacao,
             IgnorandoCompetenciasAnteriores = ignorarCompetenciasAnteriores,
+            IgnorandoClientesCancelados = ignorarClientesCancelados,
             ToleranciaFinanceiraUtilizada = AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal,
             Resultados = resultados
                 .OrderBy(x => OrdemStatus(x.Status))

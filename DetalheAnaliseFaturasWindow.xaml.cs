@@ -325,6 +325,12 @@ public partial class DetalheAnaliseFaturasWindow : Window
         if (_resultado.Status == AnaliseFinalStatus.Compativel)
             return "Os valores da fatura e do Over estão compatíveis.";
 
+        if (_resultado.Status == AnaliseFinalStatus.Atencao && possuiDevolucao)
+            return "Cancelamento no Over com devolução posterior da Bradesco; caso separado para conferência.";
+
+        if (_resultado.Status == AnaliseFinalStatus.Atencao)
+            return "O caso foi separado para conferência.";
+
         if (_resultado.Status == AnaliseFinalStatus.Ambiguo)
             return "O vínculo entre a fatura e o Over precisa de conferência manual.";
 
