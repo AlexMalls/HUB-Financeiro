@@ -800,11 +800,6 @@
                                 CornerRadius="10"
                                 Padding="10">
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="8"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="185"/>
@@ -854,36 +849,37 @@
                                         </Button>
                                     </StackPanel>
                                 </Grid>
-                                <WrapPanel Grid.Row="2" Orientation="Horizontal">
-                                    <CheckBox x:Name="IgnorarCoparticipacaoCheckBox"
-                                              Style="{StaticResource HubCheckBoxStyle}"
-                                              Content="Ignorar coparticipação no valor comparável"
-                                              IsChecked="True"
-                                              Foreground="#D8D8DE"
-                                              FontSize="11"
-                                              Margin="0,0,24,0"
-                                              VerticalAlignment="Center"
-                                              ToolTip="Marcado por padrão: eventos de coparticipação continuam visíveis, mas não entram no NET comparável. Desmarque para incluí-los na comparação."/>
-                                    <CheckBox x:Name="IgnorarCompetenciasAnterioresCheckBox"
-                                              Style="{StaticResource HubCheckBoxStyle}"
-                                              Content="Ignorar competências anteriores à competência analisada"
-                                              IsChecked="True"
-                                              Foreground="#D8D8DE"
-                                              FontSize="11"
-                                              Margin="0,0,24,0"
-                                              VerticalAlignment="Center"
-                                              ToolTip="Marcado por padrão: lançamentos da fatura com competência anterior ao mês analisado continuam visíveis nos detalhes, mas não entram no valor comparável. Desmarque para incluí-los."/>
-                                    <CheckBox x:Name="IgnorarClientesCanceladosCheckBox"
-                                              Style="{StaticResource HubCheckBoxStyle}"
-                                              Content="Ignorar clientes cancelados"
-                                              IsChecked="False"
-                                              Foreground="#D8D8DE"
-                                              FontSize="11"
-                                              VerticalAlignment="Center"
-                                              ToolTip="Quando marcado, casos com cancelamento negativo no Over e devolução posterior da Bradesco são enviados para Atenção, independentemente do valor devolvido."/>
-                                </WrapPanel>
                             </Grid>
                         </Border>
+
+                        <StackPanel Margin="10,12,0,0">
+                            <CheckBox x:Name="IgnorarCoparticipacaoCheckBox"
+                                      Style="{StaticResource HubCheckBoxStyle}"
+                                      Content="Ignorar coparticipação no valor comparável"
+                                      IsChecked="True"
+                                      Foreground="#D8D8DE"
+                                      FontSize="11"
+                                      Margin="0,0,0,8"
+                                      HorizontalAlignment="Left"
+                                      ToolTip="Marcado por padrão: eventos de coparticipação continuam visíveis, mas não entram no NET comparável. Desmarque para incluí-los na comparação."/>
+                            <CheckBox x:Name="IgnorarCompetenciasAnterioresCheckBox"
+                                      Style="{StaticResource HubCheckBoxStyle}"
+                                      Content="Ignorar competências anteriores à competência analisada"
+                                      IsChecked="True"
+                                      Foreground="#D8D8DE"
+                                      FontSize="11"
+                                      Margin="0,0,0,8"
+                                      HorizontalAlignment="Left"
+                                      ToolTip="Marcado por padrão: lançamentos da fatura com competência anterior ao mês analisado continuam visíveis nos detalhes, mas não entram no valor comparável. Desmarque para incluí-los."/>
+                            <CheckBox x:Name="IgnorarClientesCanceladosCheckBox"
+                                      Style="{StaticResource HubCheckBoxStyle}"
+                                      Content="Ignorar clientes cancelados"
+                                      IsChecked="False"
+                                      Foreground="#D8D8DE"
+                                      FontSize="11"
+                                      HorizontalAlignment="Left"
+                                      ToolTip="Quando marcado, casos com devolução posterior da Bradesco referente à competência analisada são enviados para Atenção, independentemente do valor devolvido ou de haver cancelamento no Over."/>
+                        </StackPanel>
 
                     </StackPanel>
                 </ScrollViewer>
