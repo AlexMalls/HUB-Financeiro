@@ -65,6 +65,12 @@ public partial class DetalheAnaliseFaturasWindow : Window
             ValoresText.Text = $"Fatura {Fmt(_resultado.ValorFatura)}  •  Over {Fmt(_resultado.ValorOver)}  •  Divergência {Fmt(_resultado.Diferenca)}";
         }
 
+        string explicacaoManual = _resultado.JustificativaManual?.Trim() ?? string.Empty;
+        ExplicacaoManualText.Text = explicacaoManual;
+        ExplicacaoManualCard.Visibility = string.IsNullOrWhiteSpace(explicacaoManual)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
         bool possuiDevolucao = TentarObterDevolucaoResumida(out decimal valorDevolucao, out int diasDevolucao);
         BreveExplicacaoText.Text = CriarBreveExplicacao(possuiDevolucao);
         if (possuiDevolucao)

@@ -132,6 +132,22 @@
                     <TabItem Header="Resumo">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="0,14,0,0">
+                                <Border x:Name="ExplicacaoManualCard"
+                                        Visibility="Collapsed"
+                                        Background="#392B45"
+                                        BorderBrush="#A36AD0"
+                                        BorderThickness="1"
+                                        CornerRadius="9"
+                                        Padding="14"
+                                        Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Explicação:" Foreground="#D6A6F3" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="ExplicacaoManualText"
+                                                 Style="{StaticResource CopyableTextStyle}"
+                                                 Foreground="#F2E8F8"
+                                                 Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Border>
                                 <Border Background="{StaticResource BackgroundMedium}" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" CornerRadius="9" Padding="14" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Text="Breve explicação" Foreground="#B98AF0" FontWeight="SemiBold"/>
