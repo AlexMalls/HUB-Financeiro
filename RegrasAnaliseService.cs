@@ -71,6 +71,7 @@ public sealed class RegrasAnaliseService
     public RegrasAnaliseService()
         : this(new IRegraAnalise[]
         {
+            new RegraInclusaoProporcionalVigencia15(),
             new RegraDevolucaoProporcionalCancelamento(),
             new RegraMensalidadesDevolvidas(),
             new RegraInclusaoAlteracao(),
@@ -189,6 +190,85 @@ internal abstract class RegraAnaliseBase : IRegraAnalise
         return contexto.ContextoTemporal.Evidencias
             .Select(x => $"{x.CompetenciaFatura:MM/yyyy} • {x.Movimento} {x.CompetenciaLancamento:MM/yyyy} • {x.Valor:N2} • {x.Arquivo} pág. {x.PaginaPdf}")
             .ToList();
+    }
+}
+
+internal sealed class RegraInclusaoProporcionalVigencia15 : RegraAnaliseBase
+{
+    private const int DiaInicioElegivel = 15;
+    private const int DiasCobrados = 16;
+
+    public override string NomeDaRegra => "Inclusão proporcional por vigência 15";
+
+    public override RegraAnaliseResultado Avaliar(RegraAnaliseContexto contexto)
+    {
+        const string condicao =
+            "Inclusão com vigência no dia 15 da competência analisada e cobrança da Bradesco equivalente a 16/30 do NET mensal do Over.";
+
+        if (contexto.Comparacao.Categoria != ComparacaoPrincipalCategoria.ValorMaiorNoOver)
+        {
+            return NaoAplicavel(
+                condicao,
+                "A regra se aplica somente quando a fatura está abaixo do NET comparável do Over.");
+        }
+
+        DateTime competencia = new(
+            contexto.CompetenciaAnalisada.Year,
+            contexto.CompetenciaAnalisada.Month,
+            1);
+        DateTime? dataInicio = contexto.DadosFatura?.DataInicio;
+
+        if (!dataInicio.HasValue ||
+            dataInicio.Value.Year != competencia.Year ||
+            dataInicio.Value.Month != competencia.Month ||
+            dataInicio.Value.Day != DiaInicioElegivel)
+        {
+            return NaoAplicavel(
+                condicao,
+                $"A data de início não é 15/{competencia:MM/yyyy}.");
+        }
+
+        if (!contexto.Comparacao.ValorFatura.HasValue ||
+            !contexto.Comparacao.ValorOverComparavel.HasValue ||
+            contexto.Comparacao.ValorFatura.Value <= 0m ||
+            contexto.Comparacao.ValorOverComparavel.Value <= 0m)
+        {
+            return NaoAplicavel(
+                condicao,
+                "Não há valores positivos e comparáveis nos dois relatórios para calcular a proporcionalidade.");
+        }
+
+        decimal valorFatura = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
+            contexto.Comparacao.ValorFatura.Value);
+        decimal mensalidadeOver = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
+            contexto.Comparacao.ValorOverComparavel.Value);
+        decimal valorProporcional = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
+            mensalidadeOver / 30m * DiasCobrados);
+        decimal diferencaProporcional = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
+            valorFatura - valorProporcional);
+        bool dentroTolerancia =
+            AnaliseFaturasRegrasComparacao.DentroToleranciaComparacaoPrincipal(diferencaProporcional);
+
+        string dados =
+            $"Início {dataInicio.Value:dd/MM/yyyy}; NET mensal do Over R$ {mensalidadeOver:N2} / 30 × {DiasCobrados} = R$ {valorProporcional:N2}; " +
+            $"fatura R$ {valorFatura:N2}; diferença R$ {diferencaProporcional:N2}.";
+        string evidencia =
+            $"Vigência {dataInicio.Value:dd/MM/yyyy} • fatura {valorFatura:N2} • Over {mensalidadeOver:N2} • proporcional de {DiasCobrados} dias {valorProporcional:N2}";
+
+        if (dentroTolerancia)
+        {
+            return Explicada(
+                condicao,
+                dados,
+                $"A beneficiária iniciou a vigência em {dataInicio.Value:dd/MM/yyyy}. A cobrança de R$ {valorFatura:N2} corresponde a {DiasCobrados}/30 do NET mensal de R$ {mensalidadeOver:N2} do Over, dentro da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}. A diferença decorre dos ciclos Bradesco de 1 a 30 e Over de 15 a 14.",
+                new[] { evidencia });
+        }
+
+        return Evidencia(
+            condicao,
+            dados,
+            $"A inclusão ocorreu no dia 15, mas a cobrança da fatura não corresponde a {DiasCobrados}/30 do NET mensal do Over dentro da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}.",
+            new[] { evidencia });
     }
 }
 
