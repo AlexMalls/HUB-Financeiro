@@ -53,6 +53,7 @@ public sealed class AnaliseFaturasHistoricoArquivo
     public string Grupo { get; init; } = string.Empty;
     public string NomeArquivo { get; init; } = string.Empty;
     public string CaminhoOriginal { get; init; } = string.Empty;
+    public string CaminhoArquivado { get; set; } = string.Empty;
     public long TamanhoBytes { get; init; }
     public DateTime? UltimaModificacao { get; init; }
 }
@@ -201,7 +202,7 @@ internal sealed class AnaliseFaturasHistoricoIndice
 
 /// <summary>
 /// Persistência independente da pasta temporária "Analise de Faturas".
-/// Cada competência possui um snapshot completo analise_yyyy_MM.json.
+/// Cada competência possui uma pasta com o snapshot e cópias dos arquivos utilizados.
 /// </summary>
 public sealed class AnaliseFaturasHistoricoService
 {
@@ -227,37 +228,84 @@ public sealed class AnaliseFaturasHistoricoService
     public string ObterCaminhoRegistro(DateTime competencia)
     {
         DateTime mes = new(competencia.Year, competencia.Month, 1);
-        return Path.Combine(_pastaHistorico, $"analise_{mes:yyyy_MM}.json");
+        return Path.Combine(
+            ObterPastaAnalise(mes),
+            $"analise_{mes:yyyy_MM}.json");
     }
 
-    public bool Existe(DateTime competencia) => File.Exists(ObterCaminhoRegistro(competencia));
+    public bool Existe(DateTime competencia) => File.Exists(ObterCaminhoRegistroExistente(competencia));
 
     public string Salvar(AnaliseFaturasHistoricoSnapshot snapshot)
     {
         ValidarSnapshot(snapshot);
         Directory.CreateDirectory(_pastaHistorico);
 
+        DateTime competencia = new(snapshot.Competencia.Year, snapshot.Competencia.Month, 1);
+        string pastaDestino = ObterPastaAnalise(competencia);
         string destino = ObterCaminhoRegistro(snapshot.Competencia);
-        string temporario = Path.Combine(_pastaHistorico, $".__historico_{Guid.NewGuid():N}.tmp");
+        string pastaTemporaria = Path.Combine(_pastaHistorico, $".__analise_{Guid.NewGuid():N}.tmp");
+        string pastaAnterior = Path.Combine(_pastaHistorico, $".__analise_anterior_{Guid.NewGuid():N}.tmp");
+        string legado = ObterCaminhoRegistroLegado(competencia);
+        bool pastaAnteriorMovida = false;
+        bool pastaNovaMovida = false;
+        var caminhosArquivadosAnteriores = snapshot.ArquivosUtilizados
+            .ToDictionary(x => x, x => x.CaminhoArquivado);
 
         try
         {
+            Directory.CreateDirectory(pastaTemporaria);
+            CopiarArquivosUtilizados(snapshot.ArquivosUtilizados, pastaTemporaria, pastaDestino);
+
             string json = JsonSerializer.Serialize(snapshot, JsonOptions);
-            File.WriteAllText(temporario, json);
-            File.Move(temporario, destino, overwrite: true);
+            File.WriteAllText(
+                Path.Combine(pastaTemporaria, Path.GetFileName(destino)),
+                json);
+
+            if (Directory.Exists(pastaDestino))
+            {
+                Directory.Move(pastaDestino, pastaAnterior);
+                pastaAnteriorMovida = true;
+            }
+
+            Directory.Move(pastaTemporaria, pastaDestino);
+            pastaNovaMovida = true;
             snapshot.CaminhoArquivo = destino;
 
-            AtualizarIndice(CriarResumo(snapshot, Path.GetFileName(destino)));
+            if (File.Exists(legado))
+                File.Delete(legado);
+
+            if (pastaAnteriorMovida && Directory.Exists(pastaAnterior))
+                Directory.Delete(pastaAnterior, recursive: true);
+
+            string caminhoRelativo = Path.GetRelativePath(_pastaHistorico, destino);
+            try
+            {
+                AtualizarIndice(CriarResumo(snapshot, caminhoRelativo));
+            }
+            catch
+            {
+                // O índice é reconstruído automaticamente a partir dos snapshots.
+            }
+
             return destino;
         }
         catch
         {
             try
             {
-                if (File.Exists(temporario))
-                    File.Delete(temporario);
+                if (Directory.Exists(pastaTemporaria))
+                    Directory.Delete(pastaTemporaria, recursive: true);
+
+                if (pastaNovaMovida && Directory.Exists(pastaDestino))
+                    Directory.Delete(pastaDestino, recursive: true);
+
+                if (pastaAnteriorMovida && Directory.Exists(pastaAnterior))
+                    Directory.Move(pastaAnterior, pastaDestino);
             }
             catch { }
+
+            foreach ((AnaliseFaturasHistoricoArquivo arquivo, string caminhoAnterior) in caminhosArquivadosAnteriores)
+                arquivo.CaminhoArquivado = caminhoAnterior;
 
             throw;
         }
@@ -265,11 +313,20 @@ public sealed class AnaliseFaturasHistoricoService
 
     public bool Excluir(DateTime competencia)
     {
-        string caminho = ObterCaminhoRegistro(competencia);
+        string caminho = ObterCaminhoRegistroExistente(competencia);
         if (!File.Exists(caminho))
             return false;
 
-        File.Delete(caminho);
+        string? pastaAnalise = Path.GetDirectoryName(caminho);
+        if (!string.IsNullOrWhiteSpace(pastaAnalise) &&
+            !string.Equals(pastaAnalise, _pastaHistorico, StringComparison.OrdinalIgnoreCase))
+        {
+            Directory.Delete(pastaAnalise, recursive: true);
+        }
+        else
+        {
+            File.Delete(caminho);
+        }
 
         // O índice é apenas uma visão leve do histórico. Se a atualização dele falhar,
         // Listar() detectará a divergência e o reconstruirá a partir dos snapshots restantes.
@@ -346,8 +403,11 @@ public sealed class AnaliseFaturasHistoricoService
         if (!Directory.Exists(_pastaHistorico))
             return Array.Empty<AnaliseFaturasHistoricoResumo>();
 
-        List<string> snapshots = Directory.EnumerateFiles(_pastaHistorico, "analise_*.json", SearchOption.TopDirectoryOnly)
-            .Select(x => Path.GetFileName(x))
+        List<string> snapshots = Directory.EnumerateFiles(_pastaHistorico, "analise_*.json", SearchOption.AllDirectories)
+            .Where(x => !Path.GetRelativePath(_pastaHistorico, x)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(parte => parte.StartsWith(".__", StringComparison.Ordinal)))
+            .Select(x => Path.GetRelativePath(_pastaHistorico, x))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Cast<string>()
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
@@ -463,6 +523,57 @@ public sealed class AnaliseFaturasHistoricoService
             Configuracoes = snapshot.Configuracoes,
             Totais = snapshot.Totais
         };
+
+    private string ObterPastaAnalise(DateTime competencia)
+        => Path.Combine(_pastaHistorico, $"Analise_{competencia:yyyy_MM}");
+
+    private string ObterCaminhoRegistroLegado(DateTime competencia)
+        => Path.Combine(_pastaHistorico, $"analise_{competencia:yyyy_MM}.json");
+
+    private string ObterCaminhoRegistroExistente(DateTime competencia)
+    {
+        string atual = ObterCaminhoRegistro(competencia);
+        return File.Exists(atual)
+            ? atual
+            : ObterCaminhoRegistroLegado(new DateTime(competencia.Year, competencia.Month, 1));
+    }
+
+    private static void CopiarArquivosUtilizados(
+        IEnumerable<AnaliseFaturasHistoricoArquivo> arquivos,
+        string pastaTemporaria,
+        string pastaDestinoFinal)
+    {
+        foreach (AnaliseFaturasHistoricoArquivo arquivo in arquivos)
+        {
+            string origem = File.Exists(arquivo.CaminhoOriginal)
+                ? arquivo.CaminhoOriginal
+                : arquivo.CaminhoArquivado;
+
+            if (string.IsNullOrWhiteSpace(origem) || !File.Exists(origem))
+            {
+                throw new FileNotFoundException(
+                    $"O arquivo utilizado na análise não está mais disponível: {arquivo.NomeArquivo}",
+                    arquivo.CaminhoOriginal);
+            }
+
+            string grupo = NormalizarNomePasta(arquivo.Grupo);
+            string pastaGrupoTemporaria = Path.Combine(pastaTemporaria, "Arquivos utilizados", grupo);
+            string pastaGrupoFinal = Path.Combine(pastaDestinoFinal, "Arquivos utilizados", grupo);
+            Directory.CreateDirectory(pastaGrupoTemporaria);
+
+            string destinoTemporario = Path.Combine(pastaGrupoTemporaria, arquivo.NomeArquivo);
+            File.Copy(origem, destinoTemporario, overwrite: false);
+            arquivo.CaminhoArquivado = Path.Combine(pastaGrupoFinal, arquivo.NomeArquivo);
+        }
+    }
+
+    private static string NormalizarNomePasta(string nome)
+    {
+        string resultado = string.IsNullOrWhiteSpace(nome) ? "Outros" : nome.Trim();
+        foreach (char caractere in Path.GetInvalidFileNameChars())
+            resultado = resultado.Replace(caractere, '_');
+        return resultado;
+    }
 
     private static void ValidarSnapshot(AnaliseFaturasHistoricoSnapshot snapshot)
     {

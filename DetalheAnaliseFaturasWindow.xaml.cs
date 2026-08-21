@@ -1,10 +1,15 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace HubFinanceiro;
 
@@ -12,11 +17,15 @@ public partial class DetalheAnaliseFaturasWindow : Window
 {
     private readonly AnaliseFinalResultado _resultado;
     private readonly AnaliseFaturasVisaoFinanceira _visaoFinanceira;
+    private readonly IReadOnlyList<AnaliseFaturasHistoricoArquivo> _arquivosUtilizados;
 
-    public DetalheAnaliseFaturasWindow(AnaliseFinalResultado resultado)
+    public DetalheAnaliseFaturasWindow(
+        AnaliseFinalResultado resultado,
+        IReadOnlyList<AnaliseFaturasHistoricoArquivo>? arquivosUtilizados = null)
     {
         InitializeComponent();
         _resultado = resultado ?? throw new ArgumentNullException(nameof(resultado));
+        _arquivosUtilizados = arquivosUtilizados ?? Array.Empty<AnaliseFaturasHistoricoArquivo>();
         _visaoFinanceira = AnaliseFaturasVisaoFinanceiraService.Calcular(_resultado);
         Carregar();
     }
@@ -102,12 +111,13 @@ public partial class DetalheAnaliseFaturasWindow : Window
                       $"Fatura líquida: {Fmt(_visaoFinanceira.ValorFaturaLiquida)}  •  " +
                       $"Diferença residual: {Fmt(_visaoFinanceira.DiferencaResidual)}"
                     : $"Status: {_resultado.ContextoTemporal.Status}  •  {_resultado.ContextoTemporal.Observacao}";
-            ContextoDataGrid.ItemsSource = _resultado.ContextoTemporal.Evidencias.Select(x => new
+            ContextoDataGrid.ItemsSource = _resultado.ContextoTemporal.Evidencias.Select(x => new LinhaContextoDetalhe
             {
                 CompetenciaFatura = x.CompetenciaFatura.ToString("MM/yyyy"),
                 x.Arquivo,
                 x.Subfatura,
                 Pagina = x.PaginaPdf,
+                PaginaPdfNumero = x.PaginaPdf,
                 x.Movimento,
                 CompetenciaLancamento = x.CompetenciaLancamento.ToString("MM/yyyy"),
                 Valor = x.Valor.ToString("N2"),
@@ -128,6 +138,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
                 Fatura = x.CompetenciaFatura.ToString("MM/yyyy"),
                 Arquivo = VazioComoTraco(x.Arquivo),
                 PaginaPdf = x.PaginaPdf.ToString(),
+                PaginaPdfNumero = x.PaginaPdf,
                 PaginaFatura = x.PaginaFatura?.ToString() ?? "—",
                 Subfatura = x.Subfatura.ToString(),
                 Entidade = VazioComoTraco(x.Entidade),
@@ -148,6 +159,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
                 Fatura = _resultado.Competencia.ToString("MM/yyyy"),
                 Arquivo = ExtrairArquivoFaturaPrincipal(_resultado.OrigemFatura),
                 PaginaPdf = x.PaginaPdf.ToString(),
+                PaginaPdfNumero = x.PaginaPdf,
                 PaginaFatura = x.PaginaFatura?.ToString() ?? "—",
                 Subfatura = x.Subfatura.ToString(),
                 Entidade = VazioComoTraco(x.Entidade),
@@ -174,6 +186,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
                     Fatura = x.CompetenciaFatura.ToString("MM/yyyy"),
                     Arquivo = VazioComoTraco(x.Arquivo),
                     PaginaPdf = x.PaginaPdf.ToString(),
+                    PaginaPdfNumero = x.PaginaPdf,
                     PaginaFatura = "—",
                     Subfatura = x.Subfatura.ToString(),
                     Entidade = VazioComoTraco(x.Entidade),
@@ -215,6 +228,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
         var linhasOver = _resultado.ComponentesOver.Select(x => new LinhaOverDetalhe
         {
             Linha = x.NumeroLinha.ToString(),
+            NumeroLinha = x.NumeroLinha,
             Evento = VazioComoTraco(x.Evento),
             Descricao = VazioComoTraco(x.Descricao),
             Competencia = x.Competencia?.ToString("MM/yyyy") ?? "—",
@@ -297,6 +311,174 @@ public partial class DetalheAnaliseFaturasWindow : Window
             $"NET bruto: {netBruto:N2}  •  IOF ignorado: {iofIgnorado:N2}  •  Copart ignorada: {copartIgnorada:N2}  •  PV: {pvBruto:N2}  •  Over: {overBruto:N2}";
     }
 
+    private void FaturaDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+            return;
+
+        DataGridCell? celula = EncontrarAncestral<DataGridCell>(e.OriginalSource as DependencyObject);
+        if (celula?.DataContext is not LinhaFaturaDetalhe linha ||
+            !string.Equals(celula.Column.Header?.ToString(), "Arquivo", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        AbrirPdf(linha.Arquivo, linha.PaginaPdfNumero);
+    }
+
+    private void ContextoDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+            return;
+
+        DataGridCell? celula = EncontrarAncestral<DataGridCell>(e.OriginalSource as DependencyObject);
+        if (celula?.DataContext is not LinhaContextoDetalhe linha ||
+            !string.Equals(celula.Column.Header?.ToString(), "Arquivo", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        AbrirPdf(linha.Arquivo, linha.PaginaPdfNumero);
+    }
+
+    private void OverDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+            return;
+
+        DataGridCell? celula = EncontrarAncestral<DataGridCell>(e.OriginalSource as DependencyObject);
+        if (celula?.DataContext is not LinhaOverDetalhe linha)
+            return;
+
+        e.Handled = true;
+        AbrirExcelNaLinha(linha.NumeroLinha);
+    }
+
+    private void AbrirPdf(string nomeArquivo, int pagina)
+    {
+        string? caminho = ResolverArquivo(nomeArquivo, grupoOver: false);
+        if (caminho == null)
+        {
+            MostrarArquivoIndisponivel(nomeArquivo);
+            return;
+        }
+
+        try
+        {
+            string destino = new Uri(caminho).AbsoluteUri + $"#page={Math.Max(1, pagina)}";
+            Process.Start(new ProcessStartInfo(destino) { UseShellExecute = true });
+        }
+        catch
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(caminho) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.ShowError(
+                    "Não foi possível abrir o PDF.\n\n" + ex.Message,
+                    "Erro ao abrir arquivo");
+            }
+        }
+    }
+
+    private void AbrirExcelNaLinha(int numeroLinha)
+    {
+        string? caminho = ResolverArquivo(nomeArquivo: null, grupoOver: true);
+        if (caminho == null)
+        {
+            MostrarArquivoIndisponivel("Relatório Over");
+            return;
+        }
+
+        try
+        {
+            string nomePlanilha = string.Empty;
+            try
+            {
+                nomePlanilha = new OverParser().Ler(caminho).Planilha;
+            }
+            catch
+            {
+                // Se a estrutura não puder ser relida, o Excel ainda será aberto na primeira aba.
+            }
+
+            var excel = new Excel.Application { Visible = true };
+            Excel.Workbook pastaTrabalho = excel.Workbooks.Open(caminho, ReadOnly: true);
+            var planilha = string.IsNullOrWhiteSpace(nomePlanilha)
+                ? (Excel.Worksheet)pastaTrabalho.Worksheets[1]
+                : (Excel.Worksheet)pastaTrabalho.Worksheets[nomePlanilha];
+            planilha.Activate();
+
+            int linha = Math.Max(1, numeroLinha);
+            var celula = (Excel.Range)planilha.Cells[linha, 1];
+            celula.Select();
+            excel.ActiveWindow.ScrollRow = Math.Max(1, linha - 5);
+        }
+        catch
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(caminho) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.ShowError(
+                    "Não foi possível abrir o relatório Over.\n\n" + ex.Message,
+                    "Erro ao abrir arquivo");
+            }
+        }
+    }
+
+    private string? ResolverArquivo(string? nomeArquivo, bool grupoOver)
+    {
+        IEnumerable<AnaliseFaturasHistoricoArquivo> candidatos = _arquivosUtilizados;
+        if (grupoOver)
+        {
+            candidatos = candidatos.Where(x =>
+                x.Grupo.Contains("Over", StringComparison.OrdinalIgnoreCase));
+        }
+        else if (!string.IsNullOrWhiteSpace(nomeArquivo))
+        {
+            string nome = Path.GetFileName(nomeArquivo);
+            candidatos = candidatos.Where(x =>
+                string.Equals(x.NomeArquivo, nome, StringComparison.OrdinalIgnoreCase));
+        }
+
+        foreach (AnaliseFaturasHistoricoArquivo arquivo in candidatos)
+        {
+            if (!string.IsNullOrWhiteSpace(arquivo.CaminhoArquivado) && File.Exists(arquivo.CaminhoArquivado))
+                return arquivo.CaminhoArquivado;
+
+            if (!string.IsNullOrWhiteSpace(arquivo.CaminhoOriginal) && File.Exists(arquivo.CaminhoOriginal))
+                return arquivo.CaminhoOriginal;
+        }
+
+        return null;
+    }
+
+    private static void MostrarArquivoIndisponivel(string nomeArquivo)
+        => CustomMessageBox.ShowWarning(
+            $"O arquivo '{nomeArquivo}' não foi encontrado. Históricos criados antes do arquivamento automático dependem do arquivo original.",
+            "Arquivo não encontrado");
+
+    private static T? EncontrarAncestral<T>(DependencyObject? origem) where T : DependencyObject
+    {
+        DependencyObject? atual = origem;
+        while (atual != null)
+        {
+            if (atual is T encontrado)
+                return encontrado;
+
+            atual = VisualTreeHelper.GetParent(atual);
+        }
+
+        return null;
+    }
+
     private static bool EhIgnoradoNoComparavel(string? regra)
         => !string.IsNullOrWhiteSpace(regra) &&
            regra.Contains("ignor", StringComparison.OrdinalIgnoreCase);
@@ -326,7 +508,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
             return "Os valores da fatura e do Over estão compatíveis.";
 
         if (_resultado.Status == AnaliseFinalStatus.Atencao && possuiDevolucao)
-            return "Cancelamento no Over com devolução posterior da Bradesco; caso separado para conferência.";
+            return "Devolução posterior da Bradesco identificada; caso considerado cancelado e separado para conferência.";
 
         if (_resultado.Status == AnaliseFinalStatus.Atencao)
             return "O caso foi separado para conferência.";
@@ -397,6 +579,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
         public string Fatura { get; init; } = string.Empty;
         public string Arquivo { get; init; } = string.Empty;
         public string PaginaPdf { get; init; } = string.Empty;
+        public int PaginaPdfNumero { get; init; }
         public string PaginaFatura { get; init; } = string.Empty;
         public string Subfatura { get; init; } = string.Empty;
         public string Entidade { get; init; } = string.Empty;
@@ -416,6 +599,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
     private sealed class LinhaOverDetalhe
     {
         public string Linha { get; init; } = string.Empty;
+        public int NumeroLinha { get; init; }
         public string Evento { get; init; } = string.Empty;
         public string Descricao { get; init; } = string.Empty;
         public string Competencia { get; init; } = string.Empty;
@@ -428,6 +612,19 @@ public partial class DetalheAnaliseFaturasWindow : Window
         public string Matricula { get; init; } = string.Empty;
         public string Cartao { get; init; } = string.Empty;
         public bool IgnoradoNoComparavel { get; init; }
+    }
+
+    private sealed class LinhaContextoDetalhe
+    {
+        public string CompetenciaFatura { get; init; } = string.Empty;
+        public string Arquivo { get; init; } = string.Empty;
+        public int Subfatura { get; init; }
+        public int Pagina { get; init; }
+        public int PaginaPdfNumero { get; init; }
+        public string Movimento { get; init; } = string.Empty;
+        public string CompetenciaLancamento { get; init; } = string.Empty;
+        public string Valor { get; init; } = string.Empty;
+        public string Entidade { get; init; } = string.Empty;
     }
 
     private static string TraduzirRegra(RegraAnaliseStatus status) => status switch

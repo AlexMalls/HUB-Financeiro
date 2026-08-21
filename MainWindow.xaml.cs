@@ -4061,7 +4061,7 @@ public partial class MainWindow : Window
         MessageBoxResult resposta = CustomMessageBox.ShowQuestion(
             $"Excluir a análise {resumo.Competencia:MM/yyyy} do histórico?",
             "Excluir análise",
-            "O snapshot salvo desta competência será removido. Esta ação não apaga nem altera a preparação temporária atual.");
+            "A pasta desta análise, o snapshot e as cópias arquivadas das faturas e do Over serão removidos. Esta ação não apaga nem altera os arquivos originais nem a preparação temporária atual.");
 
         if (resposta != MessageBoxResult.Yes)
             return;

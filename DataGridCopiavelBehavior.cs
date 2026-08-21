@@ -50,9 +50,11 @@ public static class DataGridCopiavelBehavior
 
         ConfigurarSelecaoPorCelula(grid);
 
+        grid.PreviewMouseLeftButtonDown += Grid_PreviewMouseLeftButtonDown;
         grid.PreviewMouseRightButtonDown += Grid_PreviewMouseRightButtonDown;
         grid.PreviewKeyDown += Grid_PreviewKeyDown;
         grid.CurrentCellChanged += Grid_CurrentCellChanged;
+        grid.SelectedCellsChanged += Grid_SelectedCellsChanged;
         grid.LoadingRow += Grid_LoadingRow;
         grid.SizeChanged += Grid_SizeChanged;
         grid.Loaded += Grid_Loaded;
@@ -63,9 +65,11 @@ public static class DataGridCopiavelBehavior
 
     private static void RemoverEventos(DataGrid grid)
     {
+        grid.PreviewMouseLeftButtonDown -= Grid_PreviewMouseLeftButtonDown;
         grid.PreviewMouseRightButtonDown -= Grid_PreviewMouseRightButtonDown;
         grid.PreviewKeyDown -= Grid_PreviewKeyDown;
         grid.CurrentCellChanged -= Grid_CurrentCellChanged;
+        grid.SelectedCellsChanged -= Grid_SelectedCellsChanged;
         grid.LoadingRow -= Grid_LoadingRow;
         grid.SizeChanged -= Grid_SizeChanged;
         grid.Loaded -= Grid_Loaded;
@@ -128,6 +132,20 @@ public static class DataGridCopiavelBehavior
     {
         if (sender is DataGrid grid)
             AtualizarLinhaDestacada(grid, grid.CurrentItem);
+    }
+
+    private static void Grid_SelectedCellsChanged(object? sender, SelectedCellsChangedEventArgs e)
+    {
+        if (sender is not DataGrid grid)
+            return;
+
+        object? item = e.AddedCells.Count > 0
+            ? e.AddedCells[e.AddedCells.Count - 1].Item
+            : grid.CurrentCell.IsValid
+                ? grid.CurrentCell.Item
+                : null;
+
+        AtualizarLinhaDestacada(grid, item);
     }
 
     private static void Grid_LoadingRow(object? sender, DataGridRowEventArgs e)
@@ -195,6 +213,16 @@ public static class DataGridCopiavelBehavior
         grid.CurrentCell = info;
         AtualizarLinhaDestacada(grid, celula.DataContext);
         celula.Focus();
+    }
+
+    private static void Grid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid)
+            return;
+
+        DataGridCell? celula = EncontrarAncestral<DataGridCell>(e.OriginalSource as DependencyObject);
+        if (celula != null)
+            AtualizarLinhaDestacada(grid, celula.DataContext);
     }
 
     private static void ConfigurarSelecaoPorCelula(DataGrid grid)
