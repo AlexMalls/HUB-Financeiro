@@ -12,6 +12,7 @@ public sealed class AnaliseFaturasHistoricoConfiguracao
 {
     public bool IgnorarCoparticipacao { get; init; } = true;
     public bool IgnorarCompetenciasAnteriores { get; init; } = true;
+    public bool IgnorarClientesCancelados { get; init; }
     public decimal ToleranciaFinanceira { get; init; } = AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal;
 }
 
@@ -80,6 +81,7 @@ public sealed class AnaliseFaturasHistoricoContextoCriacao
     public DateTime DataHoraAnalise { get; init; } = DateTime.Now;
     public bool IgnorarCoparticipacao { get; init; } = true;
     public bool IgnorarCompetenciasAnteriores { get; init; } = true;
+    public bool IgnorarClientesCancelados { get; init; }
     public decimal ToleranciaFinanceira { get; init; } = AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal;
     public IReadOnlyList<AnaliseFaturasHistoricoArquivo> ArquivosUtilizados { get; init; } = Array.Empty<AnaliseFaturasHistoricoArquivo>();
 
@@ -99,6 +101,7 @@ public sealed class AnaliseFaturasHistoricoContextoCriacao
             {
                 IgnorarCoparticipacao = IgnorarCoparticipacao,
                 IgnorarCompetenciasAnteriores = IgnorarCompetenciasAnteriores,
+                IgnorarClientesCancelados = IgnorarClientesCancelados,
                 ToleranciaFinanceira = ToleranciaFinanceira
             },
             Totais = AnaliseFaturasHistoricoTotais.Criar(diagnostico),
@@ -115,6 +118,7 @@ public sealed class AnaliseFaturasHistoricoContextoCriacao
         string arquivoOver,
         bool ignorarCoparticipacao,
         bool ignorarCompetenciasAnteriores,
+        bool ignorarClientesCancelados,
         DateTime? dataHoraAnalise = null)
     {
         var arquivos = new List<AnaliseFaturasHistoricoArquivo>();
@@ -131,6 +135,7 @@ public sealed class AnaliseFaturasHistoricoContextoCriacao
             DataHoraAnalise = dataHoraAnalise ?? DateTime.Now,
             IgnorarCoparticipacao = ignorarCoparticipacao,
             IgnorarCompetenciasAnteriores = ignorarCompetenciasAnteriores,
+            IgnorarClientesCancelados = ignorarClientesCancelados,
             ToleranciaFinanceira = AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal,
             ArquivosUtilizados = arquivos
         };
@@ -184,6 +189,7 @@ public sealed class AnaliseFaturasHistoricoResumo
     public string ConfiguracoesTexto =>
         $"Copart: {(Configuracoes.IgnorarCoparticipacao ? "ignorada" : "incluída")}  •  " +
         $"Competências anteriores: {(Configuracoes.IgnorarCompetenciasAnteriores ? "ignoradas" : "incluídas")}  •  " +
+        $"Cancelados: {(Configuracoes.IgnorarClientesCancelados ? "em Atenção" : "mantidos nas divergências")}  •  " +
         $"Tolerância: ±R$ {Configuracoes.ToleranciaFinanceira.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"))}";
 }
 
