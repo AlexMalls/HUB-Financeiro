@@ -9,7 +9,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using Excel = Microsoft.Office.Interop.Excel;
 
 namespace HubFinanceiro;
 
@@ -367,14 +366,31 @@ public partial class DetalheAnaliseFaturasWindow : Window
 
         try
         {
+            caminho = NormalizarCaminhoWindows(caminho);
             string destino = new Uri(caminho).AbsoluteUri + $"#page={Math.Max(1, pagina)}";
-            Process.Start(new ProcessStartInfo(destino) { UseShellExecute = true });
+            string? caminhoEdge = EncontrarMicrosoftEdge();
+
+            if (caminhoEdge == null)
+                throw new FileNotFoundException("O Microsoft Edge não foi encontrado.");
+
+            var processo = new ProcessStartInfo(caminhoEdge)
+            {
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(caminho) ?? string.Empty
+            };
+            processo.ArgumentList.Add(destino);
+            Process.Start(processo);
         }
         catch
         {
             try
             {
-                Process.Start(new ProcessStartInfo(caminho) { UseShellExecute = true });
+                caminho = NormalizarCaminhoWindows(caminho);
+                Process.Start(new ProcessStartInfo(caminho)
+                {
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(caminho) ?? string.Empty
+                });
             }
             catch (Exception ex)
             {
@@ -396,6 +412,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
 
         try
         {
+            caminho = NormalizarCaminhoWindows(caminho);
             string nomePlanilha = string.Empty;
             try
             {
@@ -406,15 +423,21 @@ public partial class DetalheAnaliseFaturasWindow : Window
                 // Se a estrutura não puder ser relida, o Excel ainda será aberto na primeira aba.
             }
 
-            var excel = new Excel.Application { Visible = true };
-            Excel.Workbook pastaTrabalho = excel.Workbooks.Open(caminho, ReadOnly: true);
-            var planilha = string.IsNullOrWhiteSpace(nomePlanilha)
-                ? (Excel.Worksheet)pastaTrabalho.Worksheets[1]
-                : (Excel.Worksheet)pastaTrabalho.Worksheets[nomePlanilha];
+            Type? tipoExcel = Type.GetTypeFromProgID("Excel.Application");
+            if (tipoExcel == null)
+                throw new InvalidOperationException("O Microsoft Excel não foi encontrado neste computador.");
+
+            dynamic excel = Activator.CreateInstance(tipoExcel)
+                ?? throw new InvalidOperationException("Não foi possível iniciar o Microsoft Excel.");
+            excel.Visible = true;
+            dynamic pastaTrabalho = excel.Workbooks.Open(caminho, Type.Missing, true);
+            dynamic planilha = string.IsNullOrWhiteSpace(nomePlanilha)
+                ? pastaTrabalho.Worksheets[1]
+                : pastaTrabalho.Worksheets[nomePlanilha];
             planilha.Activate();
 
             int linha = Math.Max(1, numeroLinha);
-            var celula = (Excel.Range)planilha.Cells[linha, 1];
+            dynamic celula = planilha.Cells[linha, 1];
             celula.Select();
             excel.ActiveWindow.ScrollRow = Math.Max(1, linha - 5);
         }
@@ -422,7 +445,12 @@ public partial class DetalheAnaliseFaturasWindow : Window
         {
             try
             {
-                Process.Start(new ProcessStartInfo(caminho) { UseShellExecute = true });
+                caminho = NormalizarCaminhoWindows(caminho);
+                Process.Start(new ProcessStartInfo(caminho)
+                {
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(caminho) ?? string.Empty
+                });
             }
             catch (Exception ex)
             {
@@ -431,6 +459,27 @@ public partial class DetalheAnaliseFaturasWindow : Window
                     "Erro ao abrir arquivo");
             }
         }
+    }
+
+    private static string NormalizarCaminhoWindows(string caminho)
+        => Path.GetFullPath(caminho.Replace('/', Path.DirectorySeparatorChar));
+
+    private static string? EncontrarMicrosoftEdge()
+    {
+        string[] candidatos =
+        {
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                "Microsoft", "Edge", "Application", "msedge.exe"),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Microsoft", "Edge", "Application", "msedge.exe"),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Edge", "Application", "msedge.exe")
+        };
+
+        return candidatos.FirstOrDefault(File.Exists);
     }
 
     private string? ResolverArquivo(string? nomeArquivo, bool grupoOver)
