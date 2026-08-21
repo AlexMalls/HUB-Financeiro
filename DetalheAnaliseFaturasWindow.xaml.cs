@@ -364,10 +364,12 @@ public partial class DetalheAnaliseFaturasWindow : Window
             return;
         }
 
+        string caminhoVisualizacao = caminho;
         try
         {
             caminho = NormalizarCaminhoWindows(caminho);
-            string destino = new Uri(caminho).AbsoluteUri + $"#page={Math.Max(1, pagina)}";
+            caminhoVisualizacao = CriarCopiaTemporariaPdf(caminho);
+            string destino = new Uri(caminhoVisualizacao).AbsoluteUri + $"#page={Math.Max(1, pagina)}";
             string? caminhoEdge = EncontrarMicrosoftEdge();
 
             if (caminhoEdge == null)
@@ -376,7 +378,7 @@ public partial class DetalheAnaliseFaturasWindow : Window
             var processo = new ProcessStartInfo(caminhoEdge)
             {
                 UseShellExecute = false,
-                WorkingDirectory = Path.GetDirectoryName(caminho) ?? string.Empty
+                WorkingDirectory = Path.GetDirectoryName(caminhoVisualizacao) ?? string.Empty
             };
             processo.ArgumentList.Add(destino);
             Process.Start(processo);
@@ -385,11 +387,11 @@ public partial class DetalheAnaliseFaturasWindow : Window
         {
             try
             {
-                caminho = NormalizarCaminhoWindows(caminho);
-                Process.Start(new ProcessStartInfo(caminho)
+                caminhoVisualizacao = NormalizarCaminhoWindows(caminhoVisualizacao);
+                Process.Start(new ProcessStartInfo(caminhoVisualizacao)
                 {
                     UseShellExecute = true,
-                    WorkingDirectory = Path.GetDirectoryName(caminho) ?? string.Empty
+                    WorkingDirectory = Path.GetDirectoryName(caminhoVisualizacao) ?? string.Empty
                 });
             }
             catch (Exception ex)
@@ -463,6 +465,40 @@ public partial class DetalheAnaliseFaturasWindow : Window
 
     private static string NormalizarCaminhoWindows(string caminho)
         => Path.GetFullPath(caminho.Replace('/', Path.DirectorySeparatorChar));
+
+    private static string CriarCopiaTemporariaPdf(string caminhoOrigem)
+    {
+        string pastaTemporaria = Path.Combine(
+            Path.GetTempPath(),
+            "HubFinanceiro",
+            "VisualizacaoPdf");
+        Directory.CreateDirectory(pastaTemporaria);
+        LimparCopiasTemporariasPdf(pastaTemporaria);
+
+        string caminhoTemporario = Path.Combine(
+            pastaTemporaria,
+            $"fatura_{Guid.NewGuid():N}.pdf");
+
+        File.Copy(caminhoOrigem, caminhoTemporario, overwrite: false);
+        return caminhoTemporario;
+    }
+
+    private static void LimparCopiasTemporariasPdf(string pastaTemporaria)
+    {
+        DateTime limite = DateTime.UtcNow.AddDays(-1);
+        foreach (string arquivo in Directory.EnumerateFiles(pastaTemporaria, "*.pdf"))
+        {
+            try
+            {
+                if (File.GetLastWriteTimeUtc(arquivo) < limite)
+                    File.Delete(arquivo);
+            }
+            catch
+            {
+                // Arquivos ainda abertos pelo navegador serão removidos em outra execução.
+            }
+        }
+    }
 
     private static string? EncontrarMicrosoftEdge()
     {
