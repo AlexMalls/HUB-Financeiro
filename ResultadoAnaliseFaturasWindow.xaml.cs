@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,6 +17,7 @@ public partial class ResultadoAnaliseFaturasWindow : Window
     private readonly AnaliseFinalDiagnostico _diagnostico;
     private readonly List<LinhaResultado> _linhas;
     private readonly AnaliseFaturasHistoricoContextoCriacao? _historicoContextoCriacao;
+    private readonly AnaliseFaturasExplicacaoRecorrenteService? _explicacaoRecorrenteService;
     private AnaliseFaturasHistoricoSnapshot? _historicoSnapshot;
     private LinhaResultado? _linhaDestacada;
     private bool _edicoesManuaisAlteradas;
@@ -48,6 +50,11 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         _diagnostico = diagnostico ?? throw new ArgumentNullException(nameof(diagnostico));
         _historicoContextoCriacao = contextoHistorico;
         _historicoSnapshot = snapshotHistorico;
+        string? caminhoBaseData = contextoHistorico?.CaminhoBaseData ??
+            ObterCaminhoBaseDataDoSnapshot(snapshotHistorico);
+        if (!string.IsNullOrWhiteSpace(caminhoBaseData))
+            _explicacaoRecorrenteService = new AnaliseFaturasExplicacaoRecorrenteService(caminhoBaseData);
+
         _linhas = diagnostico.Resultados.Select(x => new LinhaResultado(x, () => _edicoesManuaisAlteradas = true)).ToList();
 
         StatusComboBox.ItemsSource = new[] { "Todos", "Compatível", "Atenção", "Divergência" };
@@ -252,30 +259,60 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         AbrirDetalhesButton.IsEnabled = linha != null;
     }
 
-    private void ResultadosDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    private void EditarExplicacao_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.Equals(e.Column.Header?.ToString(), "Explicação", StringComparison.Ordinal) ||
-            e.Row.Item is not LinhaResultado linha ||
-            (linha.Original.Status != AnaliseFinalStatus.DivergenciaPendente &&
-             linha.Original.Status != AnaliseFinalStatus.Ambiguo))
-        {
-            e.Cancel = true;
-        }
-    }
-
-    private void ResultadosDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-    {
-        if (e.EditAction != DataGridEditAction.Commit ||
-            !string.Equals(e.Column.Header?.ToString(), "Explicação", StringComparison.Ordinal))
-        {
+        if (sender is not Button botao ||
+            botao.DataContext is not LinhaResultado linha ||
+            !linha.PodeEditarExplicacao)
             return;
+
+        AnaliseFaturasExplicacaoRecorrenteRegistro? recorrenciaAtual = null;
+        try
+        {
+            recorrenciaAtual = _explicacaoRecorrenteService?.Obter(linha.Original);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowWarning(
+                "A explicação pode ser editada, mas não foi possível consultar a recorrência deste cliente.\n\n" + ex.Message,
+                "Explicação recorrente");
         }
 
-        Dispatcher.BeginInvoke(new Action(() =>
+        var janela = new EditarExplicacaoAnaliseWindow(
+            linha.Beneficiario,
+            linha.Certificado,
+            linha.ExplicacaoManual,
+            recorrenciaAtual != null)
         {
-            ResultadosDataGrid.CommitEdit(DataGridEditingUnit.Row, true);
-            PersistirExplicacoesManuais();
-        }));
+            Owner = this
+        };
+
+        if (janela.ShowDialog() != true)
+            return;
+
+        linha.ExplicacaoManual = janela.Explicacao;
+
+        try
+        {
+            if (_explicacaoRecorrenteService != null)
+            {
+                if (janela.ExplicacaoRecorrente)
+                    _explicacaoRecorrenteService.Salvar(linha.Original, janela.Explicacao);
+                else if (recorrenciaAtual != null)
+                    _explicacaoRecorrenteService.Remover(linha.Original);
+            }
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError(
+                "A explicação desta análise será mantida, mas não foi possível atualizar a recorrência.\n\n" + ex.Message,
+                "Erro ao salvar recorrência");
+        }
+
+        PersistirExplicacoesManuais();
+
+        if (!string.IsNullOrWhiteSpace(PesquisaTextBox.Text))
+            AplicarFiltro();
     }
 
     private void ResultadosDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -287,10 +324,6 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         if (celula != null &&
             string.Equals(celula.Column.Header?.ToString(), "Explicação", StringComparison.Ordinal))
         {
-            ResultadosDataGrid.CurrentCell = new DataGridCellInfo(celula.DataContext, celula.Column);
-            ResultadosDataGrid.Focus();
-            celula.Focus();
-            ResultadosDataGrid.BeginEdit();
             e.Handled = true;
             return;
         }
@@ -414,14 +447,25 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         return null;
     }
 
-    protected override void OnClosing(CancelEventArgs e)
+    private static string? ObterCaminhoBaseDataDoSnapshot(AnaliseFaturasHistoricoSnapshot? snapshot)
     {
-        if (ResultadosDataGrid != null)
+        if (snapshot == null || string.IsNullOrWhiteSpace(snapshot.CaminhoArquivo))
+            return null;
+
+        DirectoryInfo? pasta = Directory.GetParent(snapshot.CaminhoArquivo);
+        while (pasta != null)
         {
-            ResultadosDataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-            ResultadosDataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            if (string.Equals(pasta.Name, "Relatórios de Analise", StringComparison.OrdinalIgnoreCase))
+                return pasta.Parent?.FullName;
+
+            pasta = pasta.Parent;
         }
 
+        return null;
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
         PersistirExplicacoesManuais();
         base.OnClosing(e);
     }
@@ -474,6 +518,7 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         public string Status { get; }
         public string RegraExplicativa { get; }
         public string Justificativa { get; }
+        public bool PodeEditarExplicacao => AnaliseFaturasExplicacaoRecorrenteService.PodeReceberExplicacaoManual(Original);
 
         public string ExplicacaoManual
         {
