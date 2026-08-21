@@ -42,6 +42,7 @@ public sealed class DadosBeneficiarioFaturaAnalise
 public sealed class RegraAnaliseContexto
 {
     public DateTime CompetenciaAnalisada { get; init; }
+    public bool IgnorarClientesCancelados { get; init; }
     public ComparacaoPrincipalResultado Comparacao { get; init; } = new();
     public ComposicaoBeneficiario? Composicao { get; init; }
     public ContextoTemporalResultado? ContextoTemporal { get; init; }
@@ -52,6 +53,9 @@ public sealed class RegraAnaliseContexto
 
     public IReadOnlyList<ComponenteFatura> ComponentesFatura =>
         TodosComponentesFatura.Where(x => x.ConsiderarNoComparavel).ToList();
+
+    public IReadOnlyList<ComponenteOver> ComponentesOver =>
+        Composicao?.ComponentesOver ?? Array.Empty<ComponenteOver>();
 }
 
 public interface IRegraAnalise
@@ -202,9 +206,10 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         const string condicao =
             "Divergência com devolução/cancelamento negativo referente à competência analisada, para estimativa manual dos dias devolvidos.";
 
-        if (contexto.Comparacao.Categoria is not (
-                ComparacaoPrincipalCategoria.NaoEncontradoNoOver or
-                ComparacaoPrincipalCategoria.ValorMaiorNaFatura))
+        bool categoriaPermiteEstimativa = contexto.Comparacao.Categoria is
+            ComparacaoPrincipalCategoria.NaoEncontradoNoOver or
+            ComparacaoPrincipalCategoria.ValorMaiorNaFatura;
+        if (!categoriaPermiteEstimativa && !contexto.IgnorarClientesCancelados)
         {
             return NaoAplicavel(
                 condicao,
@@ -218,6 +223,13 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
 
         var evidencias = new List<string>();
         var valoresDevolucao = new List<decimal>();
+        bool bradescoDevolveuDepois = false;
+
+        List<ComponenteOver> cancelamentosOver = contexto.ComponentesOver
+            .Where(EhDevolucaoCancelamentoOver)
+            .ToList();
+        evidencias.AddRange(cancelamentosOver.Select(x =>
+            $"Over • evento {VazioComoTraco(x.Evento)} • {VazioComoTraco(x.Descricao)} • NET {(x.ValorNET ?? 0m):N2} • linha {x.NumeroLinha}"));
 
         foreach (ComponenteFatura componente in contexto.TodosComponentesFatura)
         {
@@ -245,6 +257,8 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
                 }
 
                 valoresDevolucao.Add(evidencia.Valor);
+                if (PrimeiroDiaMes(evidencia.CompetenciaFatura) > competencia)
+                    bradescoDevolveuDepois = true;
                 evidencias.Add(
                     $"{evidencia.CompetenciaFatura:MM/yyyy} • {VazioMov(evidencia.Movimento)} {evidencia.CompetenciaLancamento:MM/yyyy} • {evidencia.Valor:N2} • {evidencia.Arquivo} pág. {evidencia.PaginaPdf}");
             }
@@ -259,16 +273,36 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
 
         decimal devolvido = AnaliseFaturasRegrasComparacao.ArredondarCentavos(
             Math.Abs(valoresDevolucao.Sum()));
+        bool direcionarParaAtencao =
+            contexto.IgnorarClientesCancelados &&
+            cancelamentosOver.Count > 0 &&
+            bradescoDevolveuDepois;
+
+        if (!categoriaPermiteEstimativa && !direcionarParaAtencao)
+        {
+            return NaoAplicavel(
+                condicao,
+                "A devolução encontrada não atende simultaneamente aos critérios da opção Ignorar clientes cancelados.");
+        }
 
         decimal mensalidadeBase = ObterMensalidadeBase(contexto, competencia);
         if (mensalidadeBase <= 0m)
         {
-            return Revisao(
+            string justificativaSemBase = direcionarParaAtencao
+                ? "Cancelamento negativo identificado no Over e devolução posterior identificada na Bradesco. Como a opção Ignorar clientes cancelados está marcada, o caso foi direcionado para Atenção independentemente do valor devolvido."
+                : $"Há devolução da Bradesco referente a {competencia:MM/yyyy}, mas não foi possível calcular os dias equivalentes porque não foi identificada uma mensalidade-base positiva. A ocorrência permanece como Divergência para conferência manual.";
+
+            return direcionarParaAtencao
+                ? Atencao(
+                    condicao,
+                    $"Devolução encontrada: R$ {devolvido:N2}. Mensalidade-base não identificada.",
+                    justificativaSemBase,
+                    evidencias)
+                : Revisao(
                 condicao,
                 $"Devolução encontrada: R$ {devolvido:N2}. Mensalidade-base não identificada.",
-                $"Há devolução da Bradesco referente a {competencia:MM/yyyy}, mas não foi possível calcular os dias equivalentes porque não foi identificada uma mensalidade-base positiva. " +
-                "A ocorrência permanece como Divergência para conferência manual.",
-                evidencias);
+                    justificativaSemBase,
+                    evidencias);
         }
 
         decimal valorDia = mensalidadeBase / 30m;
@@ -282,24 +316,36 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         string resultadoTolerancia = dentroTolerancia
             ? $"dentro da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}"
             : $"fora da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}";
-        string justificativa =
-            $"Estimativa: o valor devolvido pela Bradesco equivale financeiramente a {dias} {plural} em uma base fixa de 30 dias. " +
-            $"Mensalidade-base: R$ {mensalidadeBase:N2}; valor diário em base de 30 dias: R$ {valorDia:N4}; " +
-            $"{dias} {plural}: R$ {proporcional:N2}; devolução encontrada: R$ {devolvido:N2}; " +
-            $"diferença: R$ {diferenca:N2}, {resultadoTolerancia}. " +
-            "Como os relatórios importados não informam a data de cancelamento, não é possível confirmar automaticamente se essa quantidade de dias era realmente devida. " +
-            "Por segurança, o caso permanece como Divergência para conferência manual da data de cancelamento.";
+        string justificativa = direcionarParaAtencao
+            ? $"Cancelamento negativo identificado no Over e devolução posterior de R$ {devolvido:N2} identificada na Bradesco. " +
+              "Como a opção Ignorar clientes cancelados está marcada, o caso foi direcionado para Atenção independentemente do valor devolvido."
+            : $"Estimativa: o valor devolvido pela Bradesco equivale financeiramente a {dias} {plural} em uma base fixa de 30 dias. " +
+              $"Mensalidade-base: R$ {mensalidadeBase:N2}; valor diário em base de 30 dias: R$ {valorDia:N4}; " +
+              $"{dias} {plural}: R$ {proporcional:N2}; devolução encontrada: R$ {devolvido:N2}; " +
+              $"diferença: R$ {diferenca:N2}, {resultadoTolerancia}. " +
+              "Como os relatórios importados não informam a data de cancelamento, não é possível confirmar automaticamente se essa quantidade de dias era realmente devida. " +
+              "Por segurança, o caso permanece como Divergência para conferência manual da data de cancelamento.";
 
         string dados =
             $"Mensalidade-base R$ {mensalidadeBase:N2} / 30; devolução R$ {devolvido:N2}; dias equivalentes {dias}; valor proporcional R$ {proporcional:N2}; diferença R$ {diferenca:N2}; {resultadoTolerancia}.";
 
-        return Revisao(
-            condicao,
-            dados,
-            justificativa,
-            evidencias,
-            valorDevolucao: devolvido,
-            diasEquivalentesDevolucao: dias);
+        if (direcionarParaAtencao)
+        {
+            return new RegraAnaliseResultado
+            {
+                NomeDaRegra = NomeDaRegra,
+                Condicao = condicao,
+                DadosUtilizados = dados,
+                Resultado = RegraAnaliseStatus.RevisaoManual,
+                Justificativa = justificativa,
+                Evidencias = evidencias.Distinct().ToList(),
+                SinalizaAtencao = true,
+                ValorDevolucao = devolvido,
+                DiasEquivalentesDevolucao = dias
+            };
+        }
+
+        return Revisao(condicao, dados, justificativa, evidencias, devolvido, dias);
     }
 
     private static decimal ObterMensalidadeBase(RegraAnaliseContexto contexto, DateTime competencia)
@@ -363,6 +409,29 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
 
     private static bool MesmoMes(DateTime a, DateTime b)
         => a.Year == b.Year && a.Month == b.Month;
+
+    private static DateTime PrimeiroDiaMes(DateTime data)
+        => new(data.Year, data.Month, 1);
+
+    private static bool EhDevolucaoCancelamentoOver(ComponenteOver componente)
+    {
+        bool possuiValorNegativo =
+            (componente.ValorNET ?? 0m) < 0m ||
+            (componente.ValorPV ?? 0m) < 0m ||
+            (componente.ValorOver ?? 0m) < 0m;
+        if (!possuiValorNegativo)
+            return false;
+
+        string evento = (componente.Evento ?? string.Empty).Trim();
+        string descricao = componente.Descricao ?? string.Empty;
+        string natureza = componente.Natureza ?? string.Empty;
+        return evento == "007" ||
+               descricao.Contains("CANCELAMENTO", StringComparison.OrdinalIgnoreCase) ||
+               natureza.Contains("CANCELAMENTO", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string VazioComoTraco(string? texto)
+        => string.IsNullOrWhiteSpace(texto) ? "—" : texto.Trim();
 
     private static string VazioMov(string? movimento)
         => string.IsNullOrWhiteSpace(movimento) ? "sem MOV" : movimento.Trim().ToUpperInvariant();
