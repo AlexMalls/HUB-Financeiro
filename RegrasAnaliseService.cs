@@ -181,10 +181,16 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
     public override RegraAnaliseResultado Avaliar(RegraAnaliseContexto contexto)
     {
         const string condicao =
-            "Beneficiário não encontrado no Over e com devolução/cancelamento negativo referente à competência analisada.";
+            "Divergência com devolução/cancelamento negativo referente à competência analisada, para estimativa manual dos dias devolvidos.";
 
-        if (contexto.Comparacao.Categoria != ComparacaoPrincipalCategoria.NaoEncontradoNoOver)
-            return NaoAplicavel(condicao, "A regra só se aplica a casos classificados originalmente como Não encontrado no Over.");
+        if (contexto.Comparacao.Categoria is not (
+                ComparacaoPrincipalCategoria.NaoEncontradoNoOver or
+                ComparacaoPrincipalCategoria.ValorMaiorNaFatura))
+        {
+            return NaoAplicavel(
+                condicao,
+                "A estimativa se aplica somente quando há valor excedente na fatura ou o beneficiário não foi encontrado no Over.");
+        }
 
         DateTime competencia = new(
             contexto.CompetenciaAnalisada.Year,
@@ -238,10 +244,11 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         decimal mensalidadeBase = ObterMensalidadeBase(contexto, competencia);
         if (mensalidadeBase <= 0m)
         {
-            return Atencao(
+            return Revisao(
                 condicao,
                 $"Devolução encontrada: R$ {devolvido:N2}. Mensalidade-base não identificada.",
-                $"Há devolução da Bradesco referente a {competencia:MM/yyyy}; por isso o caso não deve ser tratado como simples ausência no Over. Não foi possível calcular os dias equivalentes porque não foi identificada uma mensalidade-base positiva.",
+                $"Há devolução da Bradesco referente a {competencia:MM/yyyy}, mas não foi possível calcular os dias equivalentes porque não foi identificada uma mensalidade-base positiva. " +
+                "A ocorrência permanece como Divergência para conferência manual.",
                 evidencias);
         }
 
@@ -249,19 +256,25 @@ internal sealed class RegraDevolucaoProporcionalCancelamento : RegraAnaliseBase
         (int dias, decimal proporcional, decimal diferenca) = EncontrarDiasMaisProximos(
             mensalidadeBase,
             devolvido);
+        bool dentroTolerancia =
+            AnaliseFaturasRegrasComparacao.DentroToleranciaComparacaoPrincipal(diferenca);
 
         string plural = dias == 1 ? "dia" : "dias";
+        string resultadoTolerancia = dentroTolerancia
+            ? $"dentro da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}"
+            : $"fora da tolerância de ±R$ {AnaliseFaturasRegrasComparacao.ToleranciaComparacaoPrincipal:N2}";
         string justificativa =
-            $"Valor devolvido pela Bradesco equivalente a {dias} {plural}. " +
+            $"Estimativa: o valor devolvido pela Bradesco equivale financeiramente a {dias} {plural} em uma base fixa de 30 dias. " +
             $"Mensalidade-base: R$ {mensalidadeBase:N2}; valor diário em base de 30 dias: R$ {valorDia:N4}; " +
             $"{dias} {plural}: R$ {proporcional:N2}; devolução encontrada: R$ {devolvido:N2}; " +
-            $"diferença de arredondamento: R$ {diferenca:N2}. " +
-            "O caso permanece em Atenção para auditoria, mas não é tratado como simples 'Não encontrado no Over'.";
+            $"diferença: R$ {diferenca:N2}, {resultadoTolerancia}. " +
+            "Como os relatórios importados não informam a data de cancelamento, não é possível confirmar automaticamente se essa quantidade de dias era realmente devida. " +
+            "Por segurança, o caso permanece como Divergência para conferência manual da data de cancelamento.";
 
         string dados =
-            $"Mensalidade-base R$ {mensalidadeBase:N2} / 30; devolução R$ {devolvido:N2}; dias equivalentes {dias}; valor proporcional R$ {proporcional:N2}; diferença R$ {diferenca:N2}.";
+            $"Mensalidade-base R$ {mensalidadeBase:N2} / 30; devolução R$ {devolvido:N2}; dias equivalentes {dias}; valor proporcional R$ {proporcional:N2}; diferença R$ {diferenca:N2}; {resultadoTolerancia}.";
 
-        return Atencao(condicao, dados, justificativa, evidencias);
+        return Revisao(condicao, dados, justificativa, evidencias);
     }
 
     private static decimal ObterMensalidadeBase(RegraAnaliseContexto contexto, DateTime competencia)

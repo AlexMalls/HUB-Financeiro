@@ -79,7 +79,7 @@ public static class RegrasAnaliseServiceTestes
             return r.Resultado == RegraAnaliseStatus.RevisaoManual && !r.ExplicaDivergencia;
         });
 
-        Testar(testes, "Devolução proporcional sinaliza Atenção e calcula 17 dias", () =>
+        Testar(testes, "Devolução proporcional mantém Divergência e calcula 17 dias", () =>
         {
             var comparacao = new ComparacaoPrincipalResultado
             {
@@ -131,9 +131,70 @@ public static class RegrasAnaliseServiceTestes
             };
 
             RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
-            return r.SinalizaAtencao &&
+            return !r.SinalizaAtencao &&
                    r.Resultado == RegraAnaliseStatus.RevisaoManual &&
-                   r.Justificativa.Contains("17 dias", StringComparison.OrdinalIgnoreCase);
+                   r.Justificativa.Contains("17 dias", StringComparison.OrdinalIgnoreCase) &&
+                   r.Justificativa.Contains("permanece como Divergência", StringComparison.OrdinalIgnoreCase);
+        });
+
+        Testar(testes, "Caso Amanda exibe estimativa de 15 dias sem retirar a Divergência", () =>
+        {
+            var comparacao = new ComparacaoPrincipalResultado
+            {
+                IdResultado = "T-AMANDA",
+                Certificado = "0002728/00",
+                NomeFatura = "AMANDA RIBEIRO DE OLIVEIRA",
+                Categoria = ComparacaoPrincipalCategoria.ValorMaiorNaFatura,
+                ValorFatura = 3923.69m,
+                ValorOverComparavel = 40.52m,
+                DiferencaFaturaMenosOver = 3883.17m
+            };
+
+            var contexto = new RegraAnaliseContexto
+            {
+                CompetenciaAnalisada = new DateTime(2026, 6, 1),
+                Comparacao = comparacao,
+                Composicao = new ComposicaoBeneficiario
+                {
+                    Certificado = comparacao.Certificado,
+                    NomeFatura = comparacao.NomeFatura,
+                    ComponentesFatura = new[]
+                    {
+                        new ComponenteFatura
+                        {
+                            Competencia = new DateTime(2026, 6, 1),
+                            Valor = 3923.69m,
+                            ConsiderarNoComparavel = true
+                        }
+                    }
+                },
+                ContextoTemporal = new ContextoTemporalResultado
+                {
+                    ComparacaoOriginal = comparacao,
+                    Status = ContextoTemporalStatus.ContextoEncontradoSemJustificativa,
+                    DivergenciaPermanece = true,
+                    Evidencias = new[]
+                    {
+                        new ContextoTemporalEvidencia
+                        {
+                            CompetenciaFatura = new DateTime(2026, 8, 1),
+                            CompetenciaLancamento = new DateTime(2026, 6, 1),
+                            Movimento = "CR",
+                            Valor = -1961.84m,
+                            Arquivo = "fatura-agosto.pdf",
+                            PaginaPdf = 5
+                        }
+                    }
+                }
+            };
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return !r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.RevisaoManual &&
+                   r.Justificativa.Contains("15 dias", StringComparison.OrdinalIgnoreCase) &&
+                   r.Justificativa.Contains("R$ 1.961,84", StringComparison.OrdinalIgnoreCase) &&
+                   r.Justificativa.Contains("dentro da tolerância", StringComparison.OrdinalIgnoreCase) &&
+                   r.Justificativa.Contains("data de cancelamento", StringComparison.OrdinalIgnoreCase);
         });
 
         Testar(testes, "Competência anterior ignorada não participa das exceções", () =>
