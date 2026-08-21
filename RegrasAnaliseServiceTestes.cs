@@ -233,6 +233,10 @@ public static class RegrasAnaliseServiceTestes
             {
                 CompetenciaAnalisada = new DateTime(2026, 6, 1),
                 Comparacao = comparacao,
+                DadosFatura = new DadosBeneficiarioFaturaAnalise
+                {
+                    DataInicio = new DateTime(2024, 2, 15)
+                },
                 Composicao = new ComposicaoBeneficiario
                 {
                     Certificado = comparacao.Certificado,
@@ -278,18 +282,19 @@ public static class RegrasAnaliseServiceTestes
                    r.Justificativa.Contains("data de cancelamento", StringComparison.OrdinalIgnoreCase);
         });
 
-        Testar(testes, "Checkbox de cancelados envia para Atenção independentemente do valor", () =>
+        Testar(testes, "Checkbox de cancelados envia valor não proporcional para Atenção", () =>
         {
             RegraAnaliseContexto contexto = CriarCasoCancelamento(
                 ignorarClientesCancelados: true,
                 valorDevolucaoBradesco: -1000m,
-                incluirCancelamentoOver: true);
+                incluirCancelamentoOver: true,
+                dataInicio: new DateTime(2024, 2, 15));
 
             RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
             return r.SinalizaAtencao &&
                    r.Resultado == RegraAnaliseStatus.RevisaoManual &&
                    r.ValorDevolucao == 1000m &&
-                   r.Justificativa.Contains("independentemente do valor", StringComparison.OrdinalIgnoreCase);
+                   r.Justificativa.Contains("direcionado para Atenção", StringComparison.OrdinalIgnoreCase);
         });
 
         Testar(testes, "Checkbox com devolução posterior dispensa cancelamento no Over", () =>
@@ -303,6 +308,121 @@ public static class RegrasAnaliseServiceTestes
             return r.SinalizaAtencao &&
                    r.Resultado == RegraAnaliseStatus.RevisaoManual &&
                    r.ValorDevolucao == 919.81m;
+        });
+
+        Testar(testes, "Vigência 15 com devolução de 15 dias fica Compatível", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -1961.84m,
+                incluirCancelamentoOver: false,
+                dataInicio: new DateTime(2024, 2, 15));
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return r.ExplicaDivergencia &&
+                   !r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.Explicada &&
+                   r.DiasEquivalentesDevolucao == 15 &&
+                   r.ValorDevolucao == 1961.84m;
+        });
+
+        Testar(testes, "Vigência 15 com devolução de 16 dias fica Compatível", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -2092.63m,
+                incluirCancelamentoOver: false,
+                dataInicio: new DateTime(2024, 2, 15));
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return r.ExplicaDivergencia &&
+                   !r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.Explicada &&
+                   r.DiasEquivalentesDevolucao == 16 &&
+                   r.ValorDevolucao == 2092.63m;
+        });
+
+        Testar(testes, "Vigência 15 com devolução de 14 dias permanece em Atenção", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -1831.06m,
+                incluirCancelamentoOver: false,
+                dataInicio: new DateTime(2024, 2, 15));
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.RevisaoManual &&
+                   r.DiasEquivalentesDevolucao == 14;
+        });
+
+        Testar(testes, "Devolução de 15 dias sem vigência 15 permanece em Atenção", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -1961.84m,
+                incluirCancelamentoOver: false,
+                dataInicio: new DateTime(2024, 2, 10));
+
+            RegraAnaliseResultado r = new RegraDevolucaoProporcionalCancelamento().Avaliar(contexto);
+            return r.SinalizaAtencao &&
+                   r.Resultado == RegraAnaliseStatus.RevisaoManual;
+        });
+
+        Testar(testes, "Cancelamento proporcional de vigência 15 termina como Compatível", () =>
+        {
+            RegraAnaliseContexto contexto = CriarCasoCancelamento(
+                ignorarClientesCancelados: true,
+                valorDevolucaoBradesco: -1961.84m,
+                incluirCancelamentoOver: false,
+                dataInicio: new DateTime(2024, 2, 15));
+            ComparacaoPrincipalResultado comparacao = contexto.Comparacao;
+
+            var arquivo = new FaturaBradescoArquivo
+            {
+                NomeArquivo = "fatura-junho.pdf",
+                Competencia = new DateTime(2026, 6, 1)
+            };
+            var subfatura = new FaturaBradescoSubfatura
+            {
+                Numero = 20,
+                Entidade = "CREMESP"
+            };
+            subfatura.Beneficiarios.Add(new FaturaBradescoBeneficiario
+            {
+                Certificado = comparacao.Certificado,
+                Nome = comparacao.NomeFatura,
+                DataInicio = new DateTime(2024, 2, 15),
+                Plano = "NP03"
+            });
+            arquivo.Subfaturas.Add(subfatura);
+
+            AnaliseFinalDiagnostico diagnostico = new AnaliseFinalService().Gerar(
+                new ComparacaoPrincipalDiagnostico
+                {
+                    CompetenciaAnalisada = new DateTime(2026, 6, 1),
+                    Resultados = new[] { comparacao }
+                },
+                new LancamentosConsolidacaoDiagnostico
+                {
+                    Composicoes = new[] { contexto.Composicao! }
+                },
+                new ContextoTemporalDiagnostico
+                {
+                    CompetenciaAnalisada = new DateTime(2026, 6, 1),
+                    Resultados = new[] { contexto.ContextoTemporal! }
+                },
+                new[] { arquivo },
+                new OverArquivo
+                {
+                    NomeArquivo = "Over 062026.xlsx",
+                    Competencia = new DateTime(2026, 6, 1)
+                },
+                ignorarClientesCancelados: true);
+
+            AnaliseFinalResultado resultado = diagnostico.Resultados.Single();
+            return resultado.Status == AnaliseFinalStatus.Compativel &&
+                   resultado.RegraExplicativa.Contains("Devolução proporcional por cancelamento", StringComparison.OrdinalIgnoreCase);
         });
 
         Testar(testes, "Competência anterior ignorada não participa das exceções", () =>
@@ -369,7 +489,8 @@ public static class RegrasAnaliseServiceTestes
     private static RegraAnaliseContexto CriarCasoCancelamento(
         bool ignorarClientesCancelados,
         decimal valorDevolucaoBradesco,
-        bool incluirCancelamentoOver)
+        bool incluirCancelamentoOver,
+        DateTime? dataInicio = null)
     {
         var comparacao = new ComparacaoPrincipalResultado
         {
@@ -401,6 +522,14 @@ public static class RegrasAnaliseServiceTestes
             CompetenciaAnalisada = new DateTime(2026, 6, 1),
             IgnorarClientesCancelados = ignorarClientesCancelados,
             Comparacao = comparacao,
+            DadosFatura = dataInicio.HasValue
+                ? new DadosBeneficiarioFaturaAnalise
+                {
+                    Certificado = comparacao.Certificado,
+                    Nome = comparacao.NomeFatura,
+                    DataInicio = dataInicio
+                }
+                : null,
             Composicao = new ComposicaoBeneficiario
             {
                 Certificado = comparacao.Certificado,
