@@ -10,6 +10,7 @@ public class Program
     {
         var app = new App();
         app.InitializeComponent();
+        DebugService.Initialize();
         app.Run();
     }
 }
