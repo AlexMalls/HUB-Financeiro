@@ -5,6 +5,7 @@ namespace HubFinanceiro;
 
 public partial class DebugWindow : Window
 {
+    private const int MaxVisibleEvents = 10000;
     private readonly ObservableCollection<DebugEntry> _visibleEntries = new();
     private bool _paused;
     private bool _closingFromService;
@@ -46,7 +47,7 @@ public partial class DebugWindow : Window
         }
 
         _visibleEntries.Add(entry);
-        if (_visibleEntries.Count > 5000)
+        while (_visibleEntries.Count > MaxVisibleEvents)
             _visibleEntries.RemoveAt(0);
 
         StatusText.Text = $"Último evento: {entry.Timestamp:HH:mm:ss} • {entry.Category}";
