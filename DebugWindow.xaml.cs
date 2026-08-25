@@ -41,7 +41,7 @@ public partial class DebugWindow : Window
     {
         if (_paused)
         {
-            StatusText.Text = "Tela pausada — os eventos continuam sendo gravados.";
+            StatusText.Text = "Exibição pausada — gravação continua em arquivo e memória.";
             return;
         }
 
@@ -59,11 +59,11 @@ public partial class DebugWindow : Window
     private void PauseButton_Click(object sender, RoutedEventArgs e)
     {
         _paused = !_paused;
-        PauseButton.Content = _paused ? "Retomar tela" : "Pausar tela";
+        PauseButton.Content = _paused ? "Retomar exibição" : "Pausar exibição";
 
         if (_paused)
         {
-            StatusText.Text = "Tela pausada — os eventos continuam sendo gravados.";
+            StatusText.Text = "Exibição pausada — gravação continua em arquivo e memória.";
             return;
         }
 
