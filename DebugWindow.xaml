@@ -70,7 +70,7 @@
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Text="Eventos do HUB são exibidos aqui em tempo real. O console pode ser fechado sem desligar o monitoramento."
+                <TextBlock Text="Ações, contexto de negócio e alterações em arquivos são correlacionados em tempo real."
                            Foreground="#AFAFB5"
                            FontSize="12"
                            Margin="17,4,0,0"/>
@@ -156,7 +156,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="UI = cliques e edições • CORE = log interno • SYSTEM = estado do monitor"
+            <TextBlock Text="Rotina = contexto • UI = interação • arquivo/JSON = efeito real • log = últimas 10.000 linhas"
                        Foreground="#77777E"
                        FontSize="11"/>
             <TextBlock x:Name="CounterText"
