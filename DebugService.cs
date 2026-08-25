@@ -39,6 +39,7 @@ public static class DebugService
 
     private static readonly object Sync = new();
     private static readonly List<DebugEntry> Entries = new();
+    private static readonly HashSet<TextBox> DirtyTextBoxes = new();
     private static readonly string AppDataDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "HubFinanceiro");
@@ -69,7 +70,7 @@ public static class DebugService
         Directory.CreateDirectory(LogsDirectory);
         _isEnabled = LoadSettings();
 
-        InputManager.Current.PreProcessInput += InputManager_PreProcessInput;
+        RegisterUiCaptureHandlers();
 
         _legacyLogTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -87,6 +88,7 @@ public static class DebugService
         if (_isEnabled)
         {
             Record("SYSTEM", "Modo Debug restaurado como ATIVO.", DebugEntryLevel.System);
+            Record("SYSTEM", "Captura UI global pronta: cliques e edições de campos serão monitorados.", DebugEntryLevel.System);
             Application.Current.Dispatcher.BeginInvoke(new Action(ShowConsole), DispatcherPriority.ApplicationIdle);
         }
     }
@@ -103,10 +105,12 @@ public static class DebugService
         if (enabled)
         {
             Record("SYSTEM", "Modo Debug ativado.", DebugEntryLevel.System, force: true);
+            Record("SYSTEM", "Captura UI global pronta: cliques e edições de campos serão monitorados.", DebugEntryLevel.System, force: true);
             ShowConsole();
         }
         else
         {
+            DirtyTextBoxes.Clear();
             Record("SYSTEM", "Modo Debug desativado.", DebugEntryLevel.System, force: true);
             _window?.CloseFromService();
             _window = null;
@@ -202,31 +206,56 @@ public static class DebugService
         }
     }
 
-    private static void InputManager_PreProcessInput(object sender, PreProcessInputEventArgs e)
+    private static void RegisterUiCaptureHandlers()
     {
-        if (!_isEnabled)
-            return;
+        EventManager.RegisterClassHandler(
+            typeof(Window),
+            Mouse.PreviewMouseUpEvent,
+            new MouseButtonEventHandler(Window_PreviewMouseUp),
+            true);
 
-        if (e.StagingItem.Input is not MouseButtonEventArgs mouse ||
-            mouse.ChangedButton != MouseButton.Left ||
-            mouse.ButtonState != MouseButtonState.Released)
+        EventManager.RegisterClassHandler(
+            typeof(TextBox),
+            TextBoxBase.TextChangedEvent,
+            new TextChangedEventHandler(TextBox_TextChanged),
+            true);
+
+        EventManager.RegisterClassHandler(
+            typeof(TextBox),
+            Keyboard.LostKeyboardFocusEvent,
+            new KeyboardFocusChangedEventHandler(TextBox_LostKeyboardFocus),
+            true);
+
+        EventManager.RegisterClassHandler(
+            typeof(ComboBox),
+            Selector.SelectionChangedEvent,
+            new SelectionChangedEventHandler(ComboBox_SelectionChanged),
+            true);
+    }
+
+    private static void Window_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isEnabled || e.ChangedButton != MouseButton.Left)
             return;
 
         try
         {
-            if (mouse.OriginalSource is not DependencyObject source)
+            if (sender is DebugWindow)
+                return;
+
+            if (e.OriginalSource is not DependencyObject source)
                 return;
 
             var element = FindRelevantElement(source);
             if (element == null)
                 return;
 
-            if (element is DebugWindow || Window.GetWindow(element) is DebugWindow)
+            var window = Window.GetWindow(element) ?? sender as Window;
+            if (window is DebugWindow)
                 return;
 
-            var window = Window.GetWindow(element);
             var description = DescribeElement(element);
-            var windowTitle = string.IsNullOrWhiteSpace(window?.Title) ? "HUB" : window!.Title;
+            var windowTitle = GetWindowTitle(window);
 
             Record("UI", $"Clique em {description} | Janela: {windowTitle}", DebugEntryLevel.Action);
         }
@@ -236,23 +265,87 @@ public static class DebugService
         }
     }
 
+    private static void TextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_isEnabled || sender is not TextBox textBox)
+            return;
+
+        var window = Window.GetWindow(textBox);
+        if (window is DebugWindow || !textBox.IsKeyboardFocusWithin)
+            return;
+
+        DirtyTextBoxes.Add(textBox);
+    }
+
+    private static void TextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (!_isEnabled || sender is not TextBox textBox || !DirtyTextBoxes.Remove(textBox))
+            return;
+
+        try
+        {
+            var window = Window.GetWindow(textBox);
+            if (window is DebugWindow)
+                return;
+
+            Record(
+                "UI",
+                $"Campo editado: {DescribeElement(textBox)} | Janela: {GetWindowTitle(window)} | conteúdo omitido",
+                DebugEntryLevel.Action);
+        }
+        catch (Exception ex)
+        {
+            Record("DEBUG", "Falha ao registrar edição de campo.", DebugEntryLevel.Warning, ex);
+        }
+    }
+
+    private static void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_isEnabled || sender is not ComboBox comboBox)
+            return;
+
+        var window = Window.GetWindow(comboBox);
+        if (window is DebugWindow)
+            return;
+
+        if (!comboBox.IsKeyboardFocusWithin && !comboBox.IsDropDownOpen)
+            return;
+
+        try
+        {
+            Record(
+                "UI",
+                $"Seleção alterada: {DescribeElement(comboBox)} | Janela: {GetWindowTitle(window)} | valor omitido",
+                DebugEntryLevel.Action);
+        }
+        catch (Exception ex)
+        {
+            Record("DEBUG", "Falha ao registrar alteração de seleção.", DebugEntryLevel.Warning, ex);
+        }
+    }
+
     private static FrameworkElement? FindRelevantElement(DependencyObject source)
     {
         DependencyObject? current = source;
+        FrameworkElement? namedFallback = null;
         FrameworkElement? fallback = null;
 
         while (current != null)
         {
-            if (current is Button or ToggleButton or CheckBox or RadioButton or ComboBox or ListBoxItem or MenuItem)
+            if (current is ButtonBase or TextBox or ComboBox or ListBoxItem or MenuItem or DataGridRow or TreeViewItem or TabItem or DatePicker)
                 return current as FrameworkElement;
 
             if (current is FrameworkElement fe)
+            {
                 fallback ??= fe;
+                if (namedFallback == null && !string.IsNullOrWhiteSpace(fe.Name))
+                    namedFallback = fe;
+            }
 
             current = GetParent(current);
         }
 
-        return fallback;
+        return namedFallback ?? fallback;
     }
 
     private static DependencyObject? GetParent(DependencyObject element)
@@ -300,6 +393,11 @@ public static class DebugService
         }
 
         return null;
+    }
+
+    private static string GetWindowTitle(Window? window)
+    {
+        return string.IsNullOrWhiteSpace(window?.Title) ? "HUB" : window!.Title;
     }
 
     private static void ReadLegacyLogTail()
