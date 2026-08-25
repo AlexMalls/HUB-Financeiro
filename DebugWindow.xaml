@@ -78,7 +78,7 @@
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="PauseButton"
-                        Content="Pausar tela"
+                        Content="Pausar exibição"
                         Style="{StaticResource DebugButtonStyle}"
                         Click="PauseButton_Click"/>
                 <Button Content="Limpar tela"
@@ -156,7 +156,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="UI = ações visuais • CORE = log interno • SYSTEM = estado do monitor"
+            <TextBlock Text="UI = cliques e edições • CORE = log interno • SYSTEM = estado do monitor"
                        Foreground="#77777E"
                        FontSize="11"/>
             <TextBlock x:Name="CounterText"
