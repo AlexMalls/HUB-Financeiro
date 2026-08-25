@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -248,10 +249,28 @@ public static class DebugService
             if (current is FrameworkElement fe)
                 fallback ??= fe;
 
-            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            current = GetParent(current);
         }
 
         return fallback;
+    }
+
+    private static DependencyObject? GetParent(DependencyObject element)
+    {
+        try
+        {
+            if (element is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D)
+                return System.Windows.Media.VisualTreeHelper.GetParent(element);
+
+            if (element is FrameworkContentElement contentElement)
+                return contentElement.Parent;
+
+            return LogicalTreeHelper.GetParent(element);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string DescribeElement(FrameworkElement element)
