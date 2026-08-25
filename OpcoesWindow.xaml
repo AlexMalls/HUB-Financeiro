@@ -264,7 +264,7 @@
                                         Click="OpenDebugLogsButton_Click"/>
                             </StackPanel>
 
-                            <TextBlock Text="O histórico é gravado em arquivo separado. Campos digitados não são registrados pelo capturador de interface."
+                            <TextBlock Text="Campos operacionais podem mostrar valor anterior → novo. Dados bancários e credenciais sensíveis são omitidos. O log mantém as 10.000 linhas mais recentes."
                                        Foreground="{DynamicResource TextColor}"
                                        FontSize="11"
                                        Opacity="0.45"
