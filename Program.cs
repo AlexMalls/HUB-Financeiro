@@ -11,6 +11,7 @@ public class Program
         var app = new App();
         app.InitializeComponent();
         DebugService.Initialize();
+        DebugSemanticService.Initialize();
         app.Run();
     }
 }
