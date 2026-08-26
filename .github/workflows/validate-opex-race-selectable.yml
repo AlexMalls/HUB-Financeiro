@@ -24,8 +24,29 @@ jobs:
         run: dotnet restore HubFinanceiro.csproj
       - name: Build
         run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
-      - name: Santander monitor tests
-        run: dotnet run --project HubFinanceiro.csproj --configuration Debug --no-build -- --validar-monitor-santander
+      - name: OPEX context barrier tests
+        shell: pwsh
+        run: |
+          $dll = Join-Path $PWD 'bin\Debug\net8.0-windows\HubFinanceiro.dll'
+          $assembly = [System.Reflection.Assembly]::LoadFrom($dll)
+          $type = $assembly.GetType('HubFinanceiro.SantanderCommitmentMemoryService', $true)
+          $flags = [System.Reflection.BindingFlags]::Static -bor [System.Reflection.BindingFlags]::NonPublic
+          $method = $type.GetMethod('IsSafeSnapshotAfterContextSwitch', $flags)
+          if (-not $method) { throw 'Metodo de validacao da barreira nao encontrado.' }
+
+          $troca = [DateTime]::new(2026, 8, 26, 18, 15, 20, [DateTimeKind]::Local)
+          $old = '2|R$ 6.405,24|ADM'
+          $new = '0|R$ 0,00|COR'
+
+          function Invoke-Barrier([DateTime]$captured, [string]$table, [bool]$sawEmpty) {
+            return [bool]$method.Invoke($null, @($captured, $troca, $table, $old, $sawEmpty))
+          }
+
+          if (Invoke-Barrier $troca.AddMilliseconds(-100) $old $false) { throw 'Snapshot anterior foi aceito.' }
+          if (Invoke-Barrier $troca.AddSeconds(2) $old $false) { throw 'Tabela antiga sem transicao vazia foi aceita.' }
+          if (-not (Invoke-Barrier $troca.AddSeconds(2) $old $true)) { throw 'Resultado apos tela vazia foi bloqueado.' }
+          if (-not (Invoke-Barrier $troca.AddSeconds(2) $new $false)) { throw 'Nova composicao foi bloqueada.' }
+          Write-Host 'Barreira de troca de convenio validada.'
       - name: Commit validated source
         shell: pwsh
         run: |
