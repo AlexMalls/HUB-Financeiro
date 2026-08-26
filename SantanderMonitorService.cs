@@ -16,18 +16,58 @@ namespace HubFinanceiro;
 /// </summary>
 public static class SantanderMonitorService
 {
-    private const int PollIntervalMilliseconds = 2000;
+    private const int PollIntervalMilliseconds = 750;
+    private const int ContextScanIntervalMilliseconds = 3000;
+    private const int TransientUnavailableTolerance = 6;
     private const string EdgeProcessName = "msedge";
     private const string SantanderPwaAppId = "mmbkodmnnmlokekegikhdcpakjfahekf";
 
     private static readonly object Sync = new();
     private static readonly Regex SeparadorCamelCase = new("(?<=[a-zá-ú])(?=[A-ZÁ-Ú])", RegexOptions.Compiled);
+    private static readonly Regex EspacosRepetidos = new(@"\s+", RegexOptions.Compiled);
+    private static readonly (string Pattern, string CanonicalLabel)[] SafeNavigationLabels =
+    {
+        ("consultar compromiss", "Consultar compromissos"),
+        ("consulta de compromiss", "Consultar compromissos"),
+        ("compromiss", "Compromissos"),
+        ("pagament", "Pagamentos"),
+        ("transfer", "Transferências"),
+        ("fornecedor", "Fornecedores"),
+        ("benefício", "Benefícios"),
+        ("beneficio", "Benefícios"),
+        ("cobrança", "Cobrança"),
+        ("cobranca", "Cobrança"),
+        ("salário", "Salários"),
+        ("salario", "Salários"),
+        ("extrato", "Extratos"),
+        ("tribut", "Tributos"),
+        ("avançar", "Avançar"),
+        ("avancar", "Avançar"),
+        ("continuar", "Continuar"),
+        ("confirmar", "Confirmar"),
+        ("pesquisar", "Pesquisar"),
+        ("início", "Início"),
+        ("inicio", "Início"),
+        ("agenda", "Agenda"),
+        ("boleto", "Boletos"),
+        ("buscar", "Buscar"),
+        ("voltar", "Voltar"),
+        ("menu", "Menu"),
+        ("pix", "PIX")
+    };
 
     private static Timer? _timer;
     private static bool _initialized;
     private static bool _scanInProgress;
     private static MonitorState _lastState = MonitorState.NotDetected;
     private static string? _lastDiagnosticError;
+    private static int _transientUnavailableCount;
+    private static DateTime _nextContextScanUtc;
+    private static string _lastNavigationSignature = string.Empty;
+    private static string _lastFocusSignature = string.Empty;
+    private static DateTime _lastFocusLogUtc;
+    private static bool _focusHandlerRegistered;
+    private static AutomationFocusChangedEventHandler? _focusHandler;
 
     public static void Initialize()
     {
@@ -62,12 +102,19 @@ public static class SantanderMonitorService
 
             _lastState = MonitorState.NotDetected;
             _lastDiagnosticError = null;
+            _transientUnavailableCount = 0;
+            _nextContextScanUtc = DateTime.MinValue;
+            _lastNavigationSignature = string.Empty;
+            _lastFocusSignature = string.Empty;
+            _lastFocusLogUtc = DateTime.MinValue;
             _timer = new Timer(Poll, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         }
 
+        RegisterFocusHandler();
+
         DebugService.Record(
             "SANTANDER",
-            $"Monitor passivo iniciado | Edge PWA: {SantanderPwaAppId} | intervalo: {PollIntervalMilliseconds / 1000}s.",
+            $"Monitor ampliado iniciado | Edge PWA: {SantanderPwaAppId} | intervalo: {PollIntervalMilliseconds}ms | captura: rota, navegação segura e foco.",
             DebugEntryLevel.System);
     }
 
@@ -81,9 +128,15 @@ public static class SantanderMonitorService
             _scanInProgress = false;
             _lastState = MonitorState.NotDetected;
             _lastDiagnosticError = null;
+            _transientUnavailableCount = 0;
+            _nextContextScanUtc = DateTime.MinValue;
+            _lastNavigationSignature = string.Empty;
+            _lastFocusSignature = string.Empty;
+            _lastFocusLogUtc = DateTime.MinValue;
         }
 
         timer?.Dispose();
+        UnregisterFocusHandler();
     }
 
     private static void Application_Exit(object sender, ExitEventArgs e)
@@ -105,8 +158,9 @@ public static class SantanderMonitorService
 
         try
         {
-            var currentState = DetectCurrentState();
+            var currentState = StabilizeTransientState(DetectCurrentState());
             PublishStateChange(currentState);
+            ScanSafeNavigationContext(currentState);
             _lastDiagnosticError = null;
         }
         catch (Exception ex)
@@ -129,6 +183,255 @@ public static class SantanderMonitorService
                 _timer?.Change(PollIntervalMilliseconds, Timeout.Infinite);
             }
         }
+    }
+
+    private static MonitorState StabilizeTransientState(MonitorState observed)
+    {
+        var previous = _lastState;
+        var lowInformation = observed.Detected &&
+            !observed.UrlAvailable &&
+            (string.Equals(observed.Page, "Página não exposta pelo Edge", StringComparison.Ordinal) ||
+             string.Equals(observed.Page, "Internet Banking", StringComparison.Ordinal));
+
+        if (lowInformation &&
+            previous.Detected &&
+            previous.UrlAvailable &&
+            observed.WindowHandle == previous.WindowHandle)
+        {
+            _transientUnavailableCount++;
+            if (_transientUnavailableCount <= TransientUnavailableTolerance)
+                return previous;
+        }
+        else
+        {
+            _transientUnavailableCount = 0;
+        }
+
+        return observed;
+    }
+
+    private static void RegisterFocusHandler()
+    {
+        AutomationFocusChangedEventHandler handler;
+        lock (Sync)
+        {
+            if (_focusHandlerRegistered)
+                return;
+
+            handler = new AutomationFocusChangedEventHandler(OnAutomationFocusChanged);
+            _focusHandler = handler;
+        }
+
+        try
+        {
+            Automation.AddAutomationFocusChangedEventHandler(handler);
+            lock (Sync)
+                _focusHandlerRegistered = true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or COMException)
+        {
+            DebugService.Record(
+                "SANTANDER",
+                $"A captura de foco não pôde ser ativada ({ex.GetType().Name}); rotas e controles visíveis continuarão sendo monitorados.",
+                DebugEntryLevel.Warning);
+
+            lock (Sync)
+                _focusHandler = null;
+        }
+    }
+
+    private static void UnregisterFocusHandler()
+    {
+        AutomationFocusChangedEventHandler? handler;
+        lock (Sync)
+        {
+            if (!_focusHandlerRegistered)
+                return;
+
+            _focusHandlerRegistered = false;
+            handler = _focusHandler;
+            _focusHandler = null;
+        }
+
+        try
+        {
+            if (handler != null)
+                Automation.RemoveAutomationFocusChangedEventHandler(handler);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or COMException)
+        {
+            // Encerrar o HUB nunca pode falhar por causa do monitor.
+        }
+    }
+
+    private static void OnAutomationFocusChanged(object sender, AutomationFocusChangedEventArgs e)
+    {
+        if (!DebugService.IsEnabled || sender is not AutomationElement element)
+            return;
+
+        try
+        {
+            var foregroundWindow = GetForegroundWindow();
+            if (foregroundWindow == IntPtr.Zero || !LooksLikeSantanderWindow(ReadWindowText(foregroundWindow)))
+                return;
+
+            GetWindowThreadProcessId(foregroundWindow, out var processId);
+            if (!IsEdgeProcess(processId))
+                return;
+
+            var controlType = element.Current.ControlType;
+            if (!IsSafeNavigationControl(controlType, element.Current.IsKeyboardFocusable))
+                return;
+
+            var label = SanitizeNavigationLabel(ReadAutomationProperty(() => element.Current.Name));
+            if (label == null)
+                return;
+
+            var signature = $"{controlType.Id}:{label}";
+            lock (Sync)
+            {
+                if (string.Equals(signature, _lastFocusSignature, StringComparison.Ordinal) &&
+                    DateTime.UtcNow - _lastFocusLogUtc < TimeSpan.FromSeconds(2))
+                {
+                    return;
+                }
+
+                _lastFocusSignature = signature;
+                _lastFocusLogUtc = DateTime.UtcNow;
+            }
+
+            DebugService.Record(
+                "SANTANDER",
+                $"Interação detectada | {DescribeControlType(controlType)}: {label}.",
+                DebugEntryLevel.Action);
+        }
+        catch (Exception ex) when (ex is ElementNotAvailableException or InvalidOperationException or COMException)
+        {
+            // O Edge recria elementos durante a navegação; o próximo evento será processado.
+        }
+    }
+
+    private static void ScanSafeNavigationContext(MonitorState current)
+    {
+        if (!current.Detected || current.WindowHandle == IntPtr.Zero)
+            return;
+
+        lock (Sync)
+        {
+            if (DateTime.UtcNow < _nextContextScanUtc)
+                return;
+
+            _nextContextScanUtc = DateTime.UtcNow.AddMilliseconds(ContextScanIntervalMilliseconds);
+        }
+
+        var labels = TryReadSafeNavigationLabels(current.WindowHandle);
+        if (labels.Count == 0)
+        {
+            var emptySignature = $"SEM-CONTROLES:{current.Page}:{current.SafeUrl}";
+            lock (Sync)
+            {
+                if (string.Equals(emptySignature, _lastNavigationSignature, StringComparison.Ordinal))
+                    return;
+
+                _lastNavigationSignature = emptySignature;
+            }
+
+            DebugService.Record(
+                "SANTANDER",
+                "Diagnóstico de acessibilidade | nenhum controle de navegação seguro foi exposto nesta tela.",
+                DebugEntryLevel.Background);
+            return;
+        }
+
+        var signature = string.Join("|", labels);
+        lock (Sync)
+        {
+            if (string.Equals(signature, _lastNavigationSignature, StringComparison.Ordinal))
+                return;
+
+            _lastNavigationSignature = signature;
+        }
+
+        DebugService.Record(
+            "SANTANDER",
+            $"Navegação disponível | {string.Join(" • ", labels)}.",
+            DebugEntryLevel.Background);
+    }
+
+    private static IReadOnlyList<string> TryReadSafeNavigationLabels(IntPtr windowHandle)
+    {
+        try
+        {
+            var root = AutomationElement.FromHandle(windowHandle);
+            var navigationCondition = new OrCondition(
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Hyperlink),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TreeItem));
+
+            var elements = root.FindAll(TreeScope.Descendants, navigationCondition);
+            var labels = new List<string>();
+
+            foreach (AutomationElement element in elements)
+            {
+                var label = SanitizeNavigationLabel(ReadAutomationProperty(() => element.Current.Name));
+                if (label == null || labels.Contains(label, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                labels.Add(label);
+                if (labels.Count == 12)
+                    break;
+            }
+
+            return labels;
+        }
+        catch (Exception ex) when (ex is ElementNotAvailableException or InvalidOperationException or COMException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    private static bool IsSafeNavigationControl(ControlType controlType, bool isKeyboardFocusable) =>
+        controlType == ControlType.Button ||
+        controlType == ControlType.Hyperlink ||
+        controlType == ControlType.MenuItem ||
+        controlType == ControlType.TabItem ||
+        controlType == ControlType.TreeItem ||
+        (controlType == ControlType.Text && isKeyboardFocusable);
+
+    private static string DescribeControlType(ControlType controlType)
+    {
+        if (controlType == ControlType.Button) return "botão";
+        if (controlType == ControlType.Hyperlink) return "link";
+        if (controlType == ControlType.MenuItem) return "item de menu";
+        if (controlType == ControlType.TabItem) return "aba";
+        if (controlType == ControlType.TreeItem) return "item de navegação";
+        return "controle";
+    }
+
+    internal static string? SanitizeNavigationLabel(string? rawLabel)
+    {
+        if (string.IsNullOrWhiteSpace(rawLabel))
+            return null;
+
+        var normalized = EspacosRepetidos.Replace(rawLabel, " ").Trim();
+        if (normalized.Length < 2 ||
+            normalized.Length > 80 ||
+            normalized.Any(char.IsDigit) ||
+            normalized.Contains("R$", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Contains('@'))
+        {
+            return null;
+        }
+
+        foreach (var (pattern, canonicalLabel) in SafeNavigationLabels)
+        {
+            if (normalized.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                return canonicalLabel;
+        }
+
+        return null;
     }
 
     private static MonitorState DetectCurrentState()
@@ -162,6 +465,7 @@ public static class SantanderMonitorService
             {
                 return new MonitorState(
                     true,
+                    candidate.Handle,
                     candidate.ProcessId,
                     candidate.Title,
                     document.Page,
@@ -173,6 +477,7 @@ public static class SantanderMonitorService
         var first = candidates[0];
         return new MonitorState(
             true,
+            first.Handle,
             first.ProcessId,
             first.Title,
             "Página não exposta pelo Edge",
@@ -456,13 +761,14 @@ public static class SantanderMonitorService
 
     private sealed record MonitorState(
         bool Detected,
+        IntPtr WindowHandle,
         uint ProcessId,
         string WindowTitle,
         string Page,
         string? SafeUrl,
         bool UrlAvailable)
     {
-        public static readonly MonitorState NotDetected = new(false, 0, string.Empty, string.Empty, null, false);
+        public static readonly MonitorState NotDetected = new(false, IntPtr.Zero, 0, string.Empty, string.Empty, null, false);
     }
 
     private delegate bool EnumWindowsProc(IntPtr windowHandle, IntPtr parameter);
@@ -474,6 +780,9 @@ public static class SantanderMonitorService
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowVisible(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern int GetWindowText(IntPtr windowHandle, StringBuilder text, int maximumCount);
