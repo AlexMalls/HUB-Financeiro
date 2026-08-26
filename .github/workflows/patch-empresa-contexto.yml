@@ -1,4 +1,4 @@
-name: Patch Empresa Contexto Santander
+name: Validate Empresa Contexto Santander
 
 on:
   push:
@@ -9,8 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  patch-build:
-    if: github.event.head_commit.message == 'Aplica patch cirurgico de empresa por convenio'
+  build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,44 +17,32 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Patch source
+      - name: Apply minimal patch
         shell: pwsh
         run: |
-          @'
-          from pathlib import Path
+          $path = 'SantanderCommitmentMemoryService.cs'
+          $text = Get-Content $path -Raw
 
-          path = Path('SantanderCommitmentMemoryService.cs')
-          s = path.read_text(encoding='utf-8')
+          if ($text -notmatch 'AdministradoraCompanyName') {
+            $needle = '    private const string CorretoraConvenio = "0033-4268-004905078983";'
+            if (-not $text.Contains($needle)) { throw 'Convenio constants target not found' }
+            $replacement = $needle + "`n" +
+              '    private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";' + "`n" +
+              '    private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'
+            $text = $text.Replace($needle, $replacement)
+          }
 
-          old_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
-    private const string CorretoraConvenio = "0033-4268-004905078983";'''
-          new_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
-    private const string CorretoraConvenio = "0033-4268-004905078983";
-    private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";
-    private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'''
-          if old_constants not in s:
-              raise SystemExit('constants target not found')
-          s = s.replace(old_constants, new_constants, 1)
+          if ($text.Contains('            company ?? string.Empty,')) {
+            $text = $text.Replace(
+              '            company ?? string.Empty,',
+              '            CanonicalCompanyNameFromConvenio(convenio),')
+          }
 
-          old_return = '''        return new ContextDetection(
-            true,
-            context,
-            company ?? string.Empty,
-            convenio);'''
-          new_return = '''        return new ContextDetection(
-            true,
-            context,
-            CanonicalCompanyNameFromConvenio(convenio),
-            convenio);'''
-          if old_return not in s:
-              raise SystemExit('context return target not found')
-          s = s.replace(old_return, new_return, 1)
-
-          marker = '    private static string ClassifyContextFromConvenio(string convenio)\n'
-          if marker not in s:
-              raise SystemExit('classify marker not found')
-
-          canonical_method = '''    private static string CanonicalCompanyNameFromConvenio(string convenio)
+          if ($text -notmatch 'private static string CanonicalCompanyNameFromConvenio') {
+            $marker = '    private static string ClassifyContextFromConvenio(string convenio)'
+            if (-not $text.Contains($marker)) { throw 'ClassifyContext marker not found' }
+            $method = @'
+    private static string CanonicalCompanyNameFromConvenio(string convenio)
     {
         if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
             return CorretoraCompanyName;
@@ -66,11 +53,11 @@ jobs:
         return "Empresa não identificada";
     }
 
-'''
-          s = s.replace(marker, canonical_method + marker, 1)
-          path.write_text(s, encoding='utf-8', newline='\n')
-          '@ | Set-Content patch.py -Encoding UTF8
-          python patch.py
+'@
+            $text = $text.Replace($marker, $method + $marker)
+          }
+
+          Set-Content -Path $path -Value $text -Encoding utf8
 
       - name: Restore
         run: dotnet restore HubFinanceiro.csproj
@@ -78,11 +65,16 @@ jobs:
       - name: Build
         run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
 
-      - name: Commit validated fix
+      - name: Commit validated fix if changed
         shell: pwsh
         run: |
+          git add SantanderCommitmentMemoryService.cs
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host 'No source changes to commit.'
+            exit 0
+          }
           git config user.name "Alexandre Mallorca"
           git config user.email "99052118+AlexMalls@users.noreply.github.com"
-          git add SantanderCommitmentMemoryService.cs
           git commit -m "Corrige empresa exibida pelo convenio Santander"
           git push
