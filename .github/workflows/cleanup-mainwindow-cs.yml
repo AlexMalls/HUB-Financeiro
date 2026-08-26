@@ -1,0 +1,133 @@
+name: Cleanup MainWindow CS
+
+on:
+  push:
+    branches:
+      - feat/conferir-pagamentos-opex-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.event.head_commit.message == 'Limpa diff residual do MainWindow.cs'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Rebuild MainWindow.xaml.cs from main
+        shell: pwsh
+        run: |
+          git fetch origin main
+          git checkout origin/main -- MainWindow.xaml.cs
+
+          $path = 'MainWindow.xaml.cs'
+          $text = [System.IO.File]::ReadAllText($path)
+          $needle = '    private void SalvarPrevisoes(List<PrevisaoPagamento> previsoes, string caminhoArquivo)'
+          $needleIndex = $text.IndexOf($needle, [System.StringComparison]::Ordinal)
+          if ($needleIndex -lt 0) { throw 'Metodo SalvarPrevisoes nao encontrado.' }
+
+          $insertAt = $text.LastIndexOf('    /// <summary>', $needleIndex, [System.StringComparison]::Ordinal)
+          if ($insertAt -lt 0) { throw 'Resumo de SalvarPrevisoes nao encontrado.' }
+
+          $newline = if ($insertAt -ge 2 -and $text.Substring($insertAt - 2, 2) -eq "`r`n") { "`r`n" } else { "`n" }
+
+          $method = @'
+    /// <summary>
+    /// Confere os lançamentos do O.P.E.X. contra os compromissos Santander
+    /// armazenados pelo monitor operacional do HUB.
+    /// </summary>
+    private void BtnConferirPagamentos_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var hoje = DateTime.Today;
+            var escolha = CustomMessageBox.ShowQuestion(
+                $"Deseja conferir os pagamentos de hoje ({hoje:dd/MM/yyyy})?",
+                "Conferir Pagamentos",
+                "Escolha Hoje para analisar a data atual ou Outra data para selecionar um dia diferente.",
+                "Hoje",
+                "Outra data");
+
+            DateTime dataAnalise;
+            if (escolha == MessageBoxResult.Yes)
+            {
+                dataAnalise = hoje;
+            }
+            else if (escolha == MessageBoxResult.No)
+            {
+                var selecionarData = new SelecionarDataWindow(
+                    hoje,
+                    "Conferir Pagamentos",
+                    "Qual data deseja conferir?",
+                    "Conferir",
+                    confirmarFimSemana: false,
+                    confirmarPassado: false)
+                {
+                    Owner = this
+                };
+
+                if (selecionarData.ShowDialog() != true)
+                    return;
+
+                dataAnalise = selecionarData.DataSelecionada.Date;
+            }
+            else
+            {
+                return;
+            }
+
+            var pagamentosHub = CarregarPrevisoesPagamento();
+            var memoriaBanco = SantanderCommitmentMemoryService.Snapshot();
+            var resultado = OpexPaymentReconciliationService.Conferir(
+                dataAnalise,
+                pagamentosHub,
+                memoriaBanco);
+
+            DebugService.Record(
+                "OPEX",
+                $"Conferir Pagamentos | Data: {dataAnalise:dd/MM/yyyy} | HUB No Banco: {resultado.TotalHubNoBanco} | Santander: {resultado.TotalBanco} | Divergências: {resultado.Divergencias.Count}.",
+                DebugEntryLevel.Action);
+
+            var janela = new ConferirPagamentosWindow(resultado)
+            {
+                Owner = this
+            };
+            janela.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MostrarErro("Erro ao conferir pagamentos", ex);
+        }
+    }
+
+'@
+          $method = $method.Replace("`r`n", "`n").Replace("`n", $newline)
+          $text = $text.Insert($insertAt, $method)
+          [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($false))
+
+      - name: Restore
+        run: dotnet restore HubFinanceiro.csproj
+
+      - name: Build
+        run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
+
+      - name: Reconciliation tests
+        run: dotnet run --project HubFinanceiro.csproj --configuration Debug --no-build -- --validar-conferencia-pagamentos
+
+      - name: Commit clean source
+        shell: pwsh
+        run: |
+          git add MainWindow.xaml.cs
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git config user.name "Alexandre Mallorca"
+          git config user.email "99052118+AlexMalls@users.noreply.github.com"
+          git commit -m "Limpa diff do MainWindow.xaml.cs"
+          git push
