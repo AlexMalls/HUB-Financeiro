@@ -93,7 +93,9 @@ public partial class OpexDebugInspectorWindow : Window
     private void ShowEntry(SantanderCommitmentMemoryEntry entry)
     {
         ContextTitleText.Text = $"{entry.Banco} — {entry.Contexto}";
-        CompanyText.Text = entry.Empresa;
+        CompanyText.Text = string.IsNullOrWhiteSpace(entry.Convenio)
+            ? entry.Empresa
+            : $"{entry.Empresa} • Convênio {entry.Convenio}";
         PeriodText.Text = entry.Periodo;
         CountText.Text = entry.TotalPagamentos.ToString("N0");
         TotalValueText.Text = string.IsNullOrWhiteSpace(entry.ValorTotal) ? "—" : entry.ValorTotal;
