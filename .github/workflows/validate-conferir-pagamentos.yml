@@ -20,7 +20,15 @@ jobs:
 
       - name: Apply source patch
         shell: pwsh
-        run: ./.github/scripts/apply-conferir-pagamentos.ps1
+        run: |
+          $patchPath = './.github/scripts/apply-conferir-pagamentos.ps1'
+          $patch = [System.IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
+          $wrong = "                if (data.DayOfWeek == DayOfWeek.Saturday || `n                   data.DayOfWeek == DayOfWeek.Sunday)"
+          $right = "                if (data.DayOfWeek == DayOfWeek.Saturday || data.DayOfWeek == DayOfWeek.Sunday)"
+          if (-not $patch.Contains($wrong)) { throw 'Trecho de compatibilidade da data nao encontrado no patch.' }
+          $patch = $patch.Replace($wrong, $right)
+          [System.IO.File]::WriteAllText($patchPath, $patch, [System.Text.UTF8Encoding]::new($false))
+          & $patchPath
 
       - name: Restore
         run: dotnet restore HubFinanceiro.csproj
