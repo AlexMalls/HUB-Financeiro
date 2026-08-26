@@ -13,6 +13,14 @@ public sealed class AnaliseFaturasExcelExportacaoResultado
     public int QuantidadeRelatorios { get; init; }
     public int QuantidadePendencias { get; init; }
     public IReadOnlyList<string> ArquivosGerados { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<AnaliseFaturasExcelRelatorio> Relatorios { get; init; } = Array.Empty<AnaliseFaturasExcelRelatorio>();
+}
+
+public sealed class AnaliseFaturasExcelRelatorio
+{
+    public string TipoDivergencia { get; init; } = string.Empty;
+    public string CaminhoArquivo { get; init; } = string.Empty;
+    public int QuantidadeRegistros { get; init; }
 }
 
 /// <summary>
@@ -33,16 +41,38 @@ public sealed class AnaliseFaturasExcelExporter
     private static readonly XLColor CorLinhaJustificada = XLColor.FromHtml("#EAF5EE");
 
     public AnaliseFaturasExcelExportacaoResultado ExportarPendenciasPorTipo(AnaliseFinalDiagnostico diagnostico)
+        => ExportarPendenciasPorTipo(diagnostico, somenteSemExplicacao: false, paraEmail: false);
+
+    /// <summary>
+    /// Gera os anexos usados nos rascunhos do Outlook. Somente Divergências sem explicação
+    /// manual entram nos arquivos, e cada preparação usa uma pasta exclusiva para não
+    /// invalidar anexos de rascunhos que já estejam abertos.
+    /// </summary>
+    public AnaliseFaturasExcelExportacaoResultado ExportarPendenciasSemExplicacaoPorTipo(AnaliseFinalDiagnostico diagnostico)
+        => ExportarPendenciasPorTipo(diagnostico, somenteSemExplicacao: true, paraEmail: true);
+
+    private AnaliseFaturasExcelExportacaoResultado ExportarPendenciasPorTipo(
+        AnaliseFinalDiagnostico diagnostico,
+        bool somenteSemExplicacao,
+        bool paraEmail)
     {
         if (diagnostico == null)
             throw new ArgumentNullException(nameof(diagnostico));
 
-        List<AnaliseFinalResultado> pendentes = diagnostico.Resultados
-            .Where(x => x.Status == AnaliseFinalStatus.DivergenciaPendente || x.Status == AnaliseFinalStatus.Ambiguo)
-            .ToList();
+        IEnumerable<AnaliseFinalResultado> consultaPendentes = somenteSemExplicacao
+            ? AnaliseFaturasEmailService.SelecionarDivergenciasSemExplicacao(diagnostico.Resultados)
+            : diagnostico.Resultados.Where(x =>
+                x.Status == AnaliseFinalStatus.DivergenciaPendente ||
+                x.Status == AnaliseFinalStatus.Ambiguo);
+
+        List<AnaliseFinalResultado> pendentes = consultaPendentes.ToList();
 
         if (pendentes.Count == 0)
-            throw new InvalidOperationException("Não existem Divergências para exportar.");
+        {
+            throw new InvalidOperationException(somenteSemExplicacao
+                ? "Não existem Divergências sem explicação para preparar os e-mails."
+                : "Não existem Divergências para exportar.");
+        }
 
         string perfilUsuario = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (string.IsNullOrWhiteSpace(perfilUsuario))
@@ -61,15 +91,24 @@ public sealed class AnaliseFaturasExcelExporter
         // Mantém uma subpasta por competência para não misturar relatórios e, principalmente,
         // para que a limpeza dos .xlsx gerados anteriormente nunca alcance outros arquivos
         // existentes na pasta compartilhada ANALISE DE FATURA.
-        string pastaDestino = Path.Combine(
+        string pastaCompetencia = Path.Combine(
             pastaBase,
             $"HUB Financeiro - Analise de Faturas - {diagnostico.Competencia:MM-yyyy}");
+
+        string pastaDestino = paraEmail
+            ? Path.Combine(
+                pastaCompetencia,
+                "E-mails de divergência",
+                $"Preparação {DateTime.Now:yyyy-MM-dd HH-mm-ss-fff}")
+            : pastaCompetencia;
 
         Directory.CreateDirectory(pastaDestino);
 
         // A pasta representa uma exportação atual da competência. Remove somente .xlsx
         // gerados anteriormente por este recurso para não manter relatórios obsoletos.
-        foreach (string antigo in Directory.EnumerateFiles(pastaDestino, "*.xlsx", SearchOption.TopDirectoryOnly))
+        foreach (string antigo in paraEmail
+                     ? Array.Empty<string>()
+                     : Directory.EnumerateFiles(pastaDestino, "*.xlsx", SearchOption.TopDirectoryOnly))
         {
             try { File.Delete(antigo); }
             catch { /* Se estiver aberto, o SaveAs abaixo dará uma mensagem mais específica. */ }
@@ -80,7 +119,7 @@ public sealed class AnaliseFaturasExcelExporter
             .OrderBy(x => x.Key, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
-        var arquivos = new List<string>();
+        var relatorios = new List<AnaliseFaturasExcelRelatorio>();
         int indice = 1;
 
         foreach (IGrouping<string, AnaliseFinalResultado> grupo in grupos)
@@ -91,20 +130,27 @@ public sealed class AnaliseFaturasExcelExporter
                 .ThenBy(x => x.Certificado, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
-            string nomeTipo = LimparNomeArquivo(grupo.Key);
+            string tipoApresentacao = AnaliseFaturasEmailService.ExibirOverComoProtheus(grupo.Key);
+            string nomeTipo = LimparNomeArquivo(tipoApresentacao);
             string caminho = Path.Combine(pastaDestino, $"{indice:00} - {nomeTipo}.xlsx");
 
-            CriarWorkbook(caminho, diagnostico, grupo.Key, itens);
-            arquivos.Add(caminho);
+            CriarWorkbook(caminho, diagnostico, tipoApresentacao, itens);
+            relatorios.Add(new AnaliseFaturasExcelRelatorio
+            {
+                TipoDivergencia = grupo.Key,
+                CaminhoArquivo = caminho,
+                QuantidadeRegistros = itens.Count
+            });
             indice++;
         }
 
         return new AnaliseFaturasExcelExportacaoResultado
         {
             PastaDestino = pastaDestino,
-            QuantidadeRelatorios = arquivos.Count,
+            QuantidadeRelatorios = relatorios.Count,
             QuantidadePendencias = pendentes.Count,
-            ArquivosGerados = arquivos
+            ArquivosGerados = relatorios.Select(x => x.CaminhoArquivo).ToList(),
+            Relatorios = relatorios
         };
     }
 
@@ -154,7 +200,7 @@ public sealed class AnaliseFaturasExcelExporter
             "Competência",
             "Diferença",
             "Fatura líquida",
-            "Valor no Over",
+            "Valor no Protheus",
             "Explicação",
             "Justificativa"
         };
@@ -185,10 +231,11 @@ public sealed class AnaliseFaturasExcelExporter
             if (visaoFinanceira.DiferencaResidual.HasValue) ws.Cell(linha, 5).Value = visaoFinanceira.DiferencaResidual.Value;
             if (visaoFinanceira.ValorFaturaLiquida.HasValue) ws.Cell(linha, 6).Value = visaoFinanceira.ValorFaturaLiquida.Value;
             if (item.ValorOver.HasValue) ws.Cell(linha, 7).Value = item.ValorOver.Value;
-            ws.Cell(linha, 8).Value = item.JustificativaManual;
-            ws.Cell(linha, 9).Value = visaoFinanceira.ReconstruidaDeHistoricoLegado
+            ws.Cell(linha, 8).Value = AnaliseFaturasEmailService.ExibirOverComoProtheus(item.JustificativaManual);
+            string justificativaRelatorio = visaoFinanceira.ReconstruidaDeHistoricoLegado
                 ? visaoFinanceira.CriarResumo(item.ValorFatura, item.ValorOver)
                 : item.JustificativaFinal;
+            ws.Cell(linha, 9).Value = AnaliseFaturasEmailService.ExibirOverComoProtheus(justificativaRelatorio);
 
             if (!string.IsNullOrWhiteSpace(item.JustificativaManual))
                 ws.Range(linha, 1, linha, totalColunas).Style.Fill.BackgroundColor = CorLinhaJustificada;
@@ -226,7 +273,7 @@ public sealed class AnaliseFaturasExcelExporter
         ws.Column(4).Width = 19.29; // D - Competência: 140 px
         ws.Column(5).Width = 15;    // E - Diferença
         ws.Column(6).Width = 15;    // F - Fatura líquida
-        ws.Column(7).Width = 15;    // G - Valor no Over
+        ws.Column(7).Width = 15;    // G - Valor no Protheus
         ws.Column(8).Width = 34;    // H - Explicação manual
         ws.Column(9).Width = 77.86; // I - Justificativa: 550 px
 

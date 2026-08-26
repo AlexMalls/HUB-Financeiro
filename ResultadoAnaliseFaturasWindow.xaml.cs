@@ -166,6 +166,78 @@ public partial class ResultadoAnaliseFaturasWindow : Window
         }
     }
 
+    private async void EnviarEmails_Click(object sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<AnaliseFinalResultado> divergenciasSemExplicacao =
+            AnaliseFaturasEmailService.SelecionarDivergenciasSemExplicacao(_diagnostico.Resultados);
+
+        if (divergenciasSemExplicacao.Count == 0)
+        {
+            CustomMessageBox.ShowInformation(
+                "Não existem Divergências sem explicação para preparar os e-mails.",
+                "Enviar e-mails de divergência");
+            return;
+        }
+
+        var diagnosticoParaEmail = new AnaliseFinalDiagnostico
+        {
+            Competencia = _diagnostico.Competencia,
+            Resultados = divergenciasSemExplicacao
+        };
+
+        string conteudoAnterior = EnviarEmailsButton.Content?.ToString() ?? "Enviar e-mails de divergência";
+        EnviarEmailsButton.IsEnabled = false;
+        ExportarExcelButton.IsEnabled = false;
+        EnviarEmailsButton.Content = "Preparando...";
+        Mouse.OverrideCursor = Cursors.Wait;
+
+        try
+        {
+            PersistirExplicacoesManuais();
+
+            var exporter = new AnaliseFaturasExcelExporter();
+            AnaliseFaturasExcelExportacaoResultado exportacao = await Task.Run(() =>
+                exporter.ExportarPendenciasSemExplicacaoPorTipo(diagnosticoParaEmail));
+
+            var emailService = new AnaliseFaturasEmailService();
+            AnaliseFaturasEmailPreparacaoResultado resultado = emailService.PrepararRascunhos(
+                _diagnostico.Competencia,
+                exportacao.Relatorios,
+                DateTime.Now);
+
+            string mensagem =
+                $"{resultado.QuantidadeEmails:N0} e-mail(s) aberto(s) no Outlook Classic para conferência, " +
+                $"com {resultado.QuantidadeRegistros:N0} divergência(s) sem explicação.\n\n" +
+                "Nenhum e-mail foi enviado automaticamente.";
+
+            if (resultado.RemetenteLocalizadoNasContas)
+            {
+                CustomMessageBox.ShowSuccess(mensagem, "E-mails preparados");
+            }
+            else
+            {
+                CustomMessageBox.ShowWarning(
+                    mensagem +
+                    $"\n\nA conta {AnaliseFaturasEmailService.Remetente} não apareceu como conta própria no Outlook. " +
+                    "O remetente foi preenchido por delegação; confira o campo De antes de enviar.",
+                    "E-mails preparados");
+            }
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError(
+                "Não foi possível preparar os e-mails no Outlook Classic.\n\n" + ex.Message,
+                "Erro ao preparar e-mails");
+        }
+        finally
+        {
+            Mouse.OverrideCursor = null;
+            EnviarEmailsButton.IsEnabled = true;
+            ExportarExcelButton.IsEnabled = true;
+            EnviarEmailsButton.Content = conteudoAnterior;
+        }
+    }
+
     private void TopBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.LeftButton == MouseButtonState.Pressed)

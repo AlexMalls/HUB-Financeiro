@@ -345,6 +345,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button x:Name="ExportarExcelButton" Content="Extrair relatórios em Excel" Style="{StaticResource PrimaryActionButtonStyle}" Height="38" MinWidth="190" Margin="0,0,10,0" Click="ExportarExcel_Click" />
+                        <Button x:Name="EnviarEmailsButton" Content="Enviar e-mails de divergência" Style="{StaticResource SecondaryButtonStyle}" Height="38" MinWidth="215" Margin="0,0,10,0" Click="EnviarEmails_Click" />
                         <Button Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" Height="38" MinWidth="100" Click="Close_Click" />
                     </StackPanel>
                 </Grid>

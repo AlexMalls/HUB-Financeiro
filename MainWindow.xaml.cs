@@ -397,9 +397,25 @@ public partial class MainWindow : Window
         _pagamentoSelecionado = null;
         _pagamentoBorderSelecionado = null;
         
-        // Limpa os campos
+        // Limpa os campos e restaura a lista completa do autocomplete.
+        // O ItemsSource pode estar filtrado pela pesquisa anterior; mantê-lo assim
+        // faz a próxima edição não conseguir selecionar fornecedores fora do filtro.
         if (OpexFornecedorComboBox != null)
-            OpexFornecedorComboBox.SelectedItem = null;
+        {
+            _isAtualizandoAutocompleteOpex = true;
+            try
+            {
+                OpexFornecedorComboBox.ItemsSource = _fornecedoresOpex;
+                OpexFornecedorComboBox.SelectedItem = null;
+                OpexFornecedorComboBox.Text = string.Empty;
+            }
+            finally
+            {
+                _isAtualizandoAutocompleteOpex = false;
+            }
+        }
+        if (OpexPlaceholder != null)
+            OpexPlaceholder.Visibility = Visibility.Visible;
         if (OpexDataTextBox != null)
             OpexDataTextBox.Text = string.Empty;
         if (OpexValorTextBox != null)
@@ -1895,12 +1911,67 @@ public partial class MainWindow : Window
             return; // Deixa o comportamento padrão de navegação
         }
 
-        // Se pressionar Enter, seleciona o item destacado
+        // Se pressionar Enter, confirma o item já destacado ou o único resultado
+        // visível. Antes, o código apenas fechava a lista e deixava SelectedItem nulo.
         if (e.Key == Key.Enter && comboBox.IsDropDownOpen)
         {
             e.Handled = true;
+
+            if (comboBox.SelectedItem is not Fornecedor)
+            {
+                string textoDigitado = comboBox.Text.Trim();
+                var resultadosVisiveis = comboBox.Items.OfType<Fornecedor>().ToList();
+                var correspondenciasExatas = resultadosVisiveis
+                    .Where(f => string.Equals(f.Nome.Trim(), textoDigitado, StringComparison.OrdinalIgnoreCase))
+                    .Take(2)
+                    .ToList();
+
+                Fornecedor? fornecedor = correspondenciasExatas.Count == 1
+                    ? correspondenciasExatas[0]
+                    : resultadosVisiveis.Count == 1
+                        ? resultadosVisiveis[0]
+                        : null;
+
+                if (fornecedor != null)
+                {
+                    _isAtualizandoAutocompleteOpex = true;
+                    try
+                    {
+                        comboBox.SelectedItem = fornecedor;
+                        comboBox.Text = fornecedor.Nome;
+                    }
+                    finally
+                    {
+                        _isAtualizandoAutocompleteOpex = false;
+                    }
+                }
+            }
+
             comboBox.IsDropDownOpen = false;
+            AtualizarEstadoBotoes();
         }
+    }
+
+    /// <summary>
+    /// Obtém o fornecedor efetivamente informado no campo da O.P.E.X.
+    /// O fallback por nome exato e único protege o fluxo caso o ComboBox editável
+    /// perca a seleção interna durante a atualização do autocomplete.
+    /// </summary>
+    private Fornecedor? ObterFornecedorOpexSelecionado()
+    {
+        if (OpexFornecedorComboBox.SelectedItem is Fornecedor fornecedorSelecionado)
+            return fornecedorSelecionado;
+
+        string nomeDigitado = OpexFornecedorComboBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(nomeDigitado))
+            return null;
+
+        var correspondencias = _fornecedoresOpex
+            .Where(f => string.Equals(f.Nome.Trim(), nomeDigitado, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToList();
+
+        return correspondencias.Count == 1 ? correspondencias[0] : null;
     }
 
     /// <summary>
@@ -1937,6 +2008,19 @@ public partial class MainWindow : Window
                     : Visibility.Collapsed;
             }
 
+            // Ao escolher um item, o próprio ComboBox atualiza o texto e dispara
+            // TextChanged. Essa atualização não é uma nova pesquisa: filtrar aqui
+            // apagava SelectedItem logo após a seleção e desabilitava Registrar.
+            if (comboBox.SelectedItem is Fornecedor fornecedorSelecionado &&
+                string.Equals(
+                    textoPesquisa,
+                    fornecedorSelecionado.Nome.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                AtualizarEstadoBotoes();
+                return;
+            }
+
             _isAtualizandoAutocompleteOpex = true;
             try
             {
@@ -1955,9 +2039,20 @@ public partial class MainWindow : Window
                         .ThenBy(f => f.Nome)
                         .ToList();
 
+                    var correspondenciasExatas = fornecedoresFiltrados
+                        .Where(f => string.Equals(
+                            f.Nome.Trim(),
+                            textoPesquisa,
+                            StringComparison.OrdinalIgnoreCase))
+                        .Take(2)
+                        .ToList();
+
                     comboBox.ItemsSource = fornecedoresFiltrados;
-                    comboBox.SelectedItem = null;
-                    comboBox.IsDropDownOpen = fornecedoresFiltrados.Any();
+                    comboBox.SelectedItem = correspondenciasExatas.Count == 1
+                        ? correspondenciasExatas[0]
+                        : null;
+                    comboBox.IsDropDownOpen = fornecedoresFiltrados.Any() &&
+                                              comboBox.SelectedItem == null;
                 }
 
                 // Restaura já no mesmo ciclo do evento, sem esperar o Background dispatcher.
@@ -1981,6 +2076,8 @@ public partial class MainWindow : Window
                 textBox.SelectionStart = posicao;
                 textBox.SelectionLength = 0;
             }), System.Windows.Threading.DispatcherPriority.Input);
+
+            AtualizarEstadoBotoes();
         }
         catch (Exception ex)
         {
@@ -2492,8 +2589,20 @@ public partial class MainWindow : Window
         // Limpa dados
         _pagamentoSelecionado = null;
         
-        // Limpa campos
-        OpexFornecedorComboBox.SelectedItem = null;
+        // Limpa campos e desfaz qualquer filtro deixado pelo autocomplete.
+        _isAtualizandoAutocompleteOpex = true;
+        try
+        {
+            OpexFornecedorComboBox.ItemsSource = _fornecedoresOpex;
+            OpexFornecedorComboBox.SelectedItem = null;
+            OpexFornecedorComboBox.Text = string.Empty;
+        }
+        finally
+        {
+            _isAtualizandoAutocompleteOpex = false;
+        }
+        if (OpexPlaceholder != null)
+            OpexPlaceholder.Visibility = Visibility.Visible;
         OpexDataTextBox.Text = string.Empty;
         OpexValorTextBox.Text = string.Empty;
         OpexEmpresaComboBox.SelectedItem = null;
@@ -2515,6 +2624,22 @@ public partial class MainWindow : Window
             // Armazena o pagamento selecionado
             _pagamentoSelecionado = pagamento;
 
+            // Remove qualquer seleção anterior e restaura a fonte completa antes
+            // de localizar o fornecedor deste registro.
+            _isAtualizandoAutocompleteOpex = true;
+            try
+            {
+                OpexFornecedorComboBox.ItemsSource = _fornecedoresOpex;
+                OpexFornecedorComboBox.SelectedItem = null;
+                OpexFornecedorComboBox.Text = string.Empty;
+            }
+            finally
+            {
+                _isAtualizandoAutocompleteOpex = false;
+            }
+            if (OpexPlaceholder != null)
+                OpexPlaceholder.Visibility = Visibility.Visible;
+
             // Busca o fornecedor correspondente
             // Se o código for 000000, busca pelo nome (pois vários podem ter código zerado)
             Fornecedor? fornecedor = null;
@@ -2532,9 +2657,17 @@ public partial class MainWindow : Window
             
             if (fornecedor != null)
             {
-                // Define o texto e a seleção
-                OpexFornecedorComboBox.Text = fornecedor.Nome;
-                OpexFornecedorComboBox.SelectedItem = fornecedor;
+                // Seleciona o fornecedor sem reativar o filtro pelo TextChanged.
+                _isAtualizandoAutocompleteOpex = true;
+                try
+                {
+                    OpexFornecedorComboBox.SelectedItem = fornecedor;
+                    OpexFornecedorComboBox.Text = fornecedor.Nome;
+                }
+                finally
+                {
+                    _isAtualizandoAutocompleteOpex = false;
+                }
                 
                 // Oculta o placeholder
                 if (OpexPlaceholder != null)
@@ -2548,6 +2681,7 @@ public partial class MainWindow : Window
             OpexValorTextBox.Text = pagamento.Valor.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
 
             // Preenche a empresa
+            OpexEmpresaComboBox.SelectedItem = null;
             if (!string.IsNullOrEmpty(pagamento.Empresa))
             {
                 foreach (ComboBoxItem item in OpexEmpresaComboBox.Items)
@@ -2584,7 +2718,7 @@ public partial class MainWindow : Window
         try
         {
             // Verifica se os campos obrigatórios estão preenchidos
-            bool fornecedorPreenchido = OpexFornecedorComboBox.SelectedItem != null;
+            bool fornecedorPreenchido = ObterFornecedorOpexSelecionado() != null;
             bool dataPreenchida = !string.IsNullOrWhiteSpace(OpexDataTextBox.Text) && OpexDataTextBox.Text.Length == 10;
             bool valorPreenchido = !string.IsNullOrWhiteSpace(OpexValorTextBox.Text);
             bool empresaPreenchida = OpexEmpresaComboBox.SelectedItem != null;
@@ -2626,7 +2760,8 @@ public partial class MainWindow : Window
         try
         {
             // Valida os campos
-            if (OpexFornecedorComboBox.SelectedItem is not Fornecedor fornecedor)
+            var fornecedor = ObterFornecedorOpexSelecionado();
+            if (fornecedor == null)
             {
                 MostrarAviso("Selecione um fornecedor.");
                 return;
