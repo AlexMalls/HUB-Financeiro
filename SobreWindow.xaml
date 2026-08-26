@@ -1,0 +1,131 @@
+<Window x:Class="HubFinanceiro.SobreWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sobre"
+        Width="650"
+        Height="610"
+        MinWidth="580"
+        MinHeight="540"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Foreground="White">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Bg" Color="#151517"/>
+        <SolidColorBrush x:Key="Surface" Color="#202024"/>
+        <SolidColorBrush x:Key="Border" Color="#393940"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource Bg}"
+            BorderBrush="#45454E"
+            BorderThickness="1"
+            CornerRadius="13">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="58"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    Background="#1B1B1F"
+                    BorderBrush="#303036"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="13,13,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="20,0,12,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Sobre" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1"
+                            Width="34" Height="34"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="#AFAFB6"
+                            Cursor="Hand"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="12"
+                            Content=""
+                            Click="CloseButton_Click"/>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="35,29,35,30">
+                    <Image Source="midia/ennoia-logo.png"
+                           Width="124" Height="124"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,10"/>
+
+                    <TextBlock Text="ENNOIA"
+                               HorizontalAlignment="Center"
+                               FontSize="25"
+                               FontWeight="SemiBold"
+                               CharacterSpacing="180"/>
+                    <TextBlock Text="HUB Financeiro"
+                               HorizontalAlignment="Center"
+                               Foreground="#B66BFF"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Margin="0,5,0,0"/>
+                    <TextBlock x:Name="VersionText"
+                               Text="Versão"
+                               HorizontalAlignment="Center"
+                               Foreground="#777780"
+                               FontSize="10"
+                               Margin="0,3,0,22"/>
+
+                    <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="10" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="Um projeto Ennoia" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="O HUB Financeiro é um projeto desenvolvido e mantido pela Ennoia, criado para centralizar, apoiar e evoluir rotinas financeiras em um único ambiente."
+                                       Foreground="#B3B3BA"
+                                       FontSize="12"
+                                       LineHeight="19"
+                                       TextWrapping="Wrap"
+                                       Margin="0,9,0,0"/>
+                            <TextBlock Text="Sua proposta é transformar processos recorrentes em fluxos mais claros, organizados e consistentes, mantendo as ferramentas do dia a dia próximas de quem realmente as utiliza."
+                                       Foreground="#8F8F98"
+                                       FontSize="11"
+                                       LineHeight="18"
+                                       TextWrapping="Wrap"
+                                       Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="#1B1B1F" CornerRadius="9" Padding="14">
+                            <StackPanel>
+                                <TextBlock Text="PRODUTO" Foreground="#777780" FontSize="9" FontWeight="Bold"/>
+                                <TextBlock Text="HUB Financeiro" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBlock Text="Aplicação desktop para suporte às rotinas financeiras" Foreground="#909099" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Background="#1B1B1F" CornerRadius="9" Padding="14">
+                            <StackPanel>
+                                <TextBlock Text="DESENVOLVIMENTO" Foreground="#777780" FontSize="9" FontWeight="Bold"/>
+                                <TextBlock Text="Ennoia" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBlock Text="Concepção, desenvolvimento e evolução do projeto" Foreground="#909099" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Height="1" Background="#303036" Margin="0,24,0,18"/>
+
+                    <TextBlock Text="© 2026 Ennoia. Todos os direitos reservados."
+                               HorizontalAlignment="Center"
+                               Foreground="#9A9AA2"
+                               FontSize="10"/>
+                    <TextBlock Text="Este software, sua interface e seus componentes integram o projeto HUB Financeiro da Ennoia."
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Foreground="#686871"
+                               FontSize="9"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>
