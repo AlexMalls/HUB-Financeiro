@@ -27,7 +27,7 @@ public class Program
         app.InitializeComponent();
         DebugService.Initialize();
         DebugSemanticService.Initialize();
-        SantanderMonitorService.Initialize();
+        SantanderMonitorContinuoService.Initialize();
         app.Run();
     }
 }
