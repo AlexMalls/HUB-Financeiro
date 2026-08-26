@@ -1,7 +1,7 @@
 <Window x:Class="HubFinanceiro.OpexDebugInspectorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Debug O.P.E.X. - Memória temporária"
+        Title="O.P.E.X. - Contextos salvos"
         Width="1180"
         Height="700"
         MinWidth="920"
@@ -134,7 +134,7 @@
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Text="Memória temporária dos últimos resultados realmente observados nos contextos bancários."
+                <TextBlock Text="Histórico persistente dos últimos resultados realmente observados nos contextos bancários."
                            Foreground="#A9A9B0"
                            FontSize="12"
                            Margin="30,4,0,0"/>
@@ -142,7 +142,7 @@
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button Content="Atualizar tela" Click="RefreshButton_Click" Margin="0,0,8,0"/>
-                <Button Content="Limpar memória" Click="ClearMemoryButton_Click"/>
+                <Button Content="Limpar histórico" Click="ClearMemoryButton_Click"/>
             </StackPanel>
         </Grid>
 
@@ -210,7 +210,7 @@
 
                     <StackPanel>
                         <TextBlock x:Name="ContextTitleText"
-                                   Text="Nenhum contexto em memória"
+                                   Text="Nenhum contexto salvo"
                                    FontSize="18"
                                    FontWeight="SemiBold"/>
                         <TextBlock x:Name="CompanyText"
@@ -280,7 +280,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="RAM da sessão • até 4 períodos por contexto • nenhum snapshot é salvo em disco"
+            <TextBlock Text="Histórico em disco • até 4 períodos por contexto • salvo em data\santander_contextos.json"
                        Foreground="#73737C"
                        FontSize="11"/>
             <TextBlock x:Name="MemoryCountText"

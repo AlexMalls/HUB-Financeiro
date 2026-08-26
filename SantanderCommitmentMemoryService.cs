@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
@@ -29,8 +31,8 @@ public sealed record SantanderCommitmentMemoryEntry(
 }
 
 /// <summary>
-/// Memória temporária dos últimos resultados efetivamente observados na tela
-/// Consultar compromissos. Nada é persistido em disco.
+/// Histórico persistente dos últimos resultados efetivamente observados na tela
+/// Consultar compromissos. Os snapshots são persistidos em JSON na pasta data do HUB.
 ///
 /// O número do convênio visível no cabeçalho é a fonte de verdade para definir
 /// Administradora x Corretora. O nome da empresa é usado apenas como metadado.
@@ -49,6 +51,15 @@ public static class SantanderCommitmentMemoryService
     private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";
 
     private static readonly object Sync = new();
+    private static readonly object PersistenceSync = new();
+    private static readonly JsonSerializerOptions PersistenceJsonOptions = new()
+    {
+        WriteIndented = true
+    };
+    private static readonly string PersistenceDirectory = ResolvePersistenceDirectory();
+    private static readonly string PersistencePath = Path.Combine(PersistenceDirectory, "santander_contextos.json");
+
+    public static string PersistenceFilePath => PersistencePath;
     private static readonly Dictionary<string, SantanderCommitmentMemoryEntry> Entries =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -84,6 +95,8 @@ public static class SantanderCommitmentMemoryService
             Application.Current.Exit += Application_Exit;
         }
 
+        LoadPersistedEntries();
+
         if (DebugService.IsEnabled)
             Start();
     }
@@ -111,10 +124,12 @@ public static class SantanderCommitmentMemoryService
             _nextContextProbeUtc = DateTime.MinValue;
         }
 
+        PersistEntriesToDisk();
+
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => MemoryChanged?.Invoke()));
         DebugService.Record(
             "OPEX",
-            "Memória temporária de compromissos foi limpa pelo usuário.",
+            "Histórico persistente de compromissos foi limpo pelo usuário.",
             DebugEntryLevel.System);
     }
 
@@ -129,8 +144,6 @@ public static class SantanderCommitmentMemoryService
     private static void Application_Exit(object sender, ExitEventArgs e)
     {
         StopMonitoring();
-        lock (Sync)
-            Entries.Clear();
 
         DebugService.EnabledChanged -= DebugService_EnabledChanged;
         Application.Current.Exit -= Application_Exit;
@@ -159,7 +172,7 @@ public static class SantanderCommitmentMemoryService
 
         DebugService.Record(
             "SANTANDER",
-            $"Memória contextual ativa | temporária em RAM | retenção: {MaxPeriodsPerContext} períodos por contexto / {MaxEntriesTotal} snapshots no total.",
+            $"Histórico contextual ativo | persistência: {PersistencePath} | retenção: {MaxPeriodsPerContext} períodos por contexto / {MaxEntriesTotal} snapshots no total.",
             DebugEntryLevel.System);
     }
 
@@ -400,6 +413,8 @@ public static class SantanderCommitmentMemoryService
             TrimUnsafe(entry.ContextKey);
         }
 
+        PersistEntriesToDisk();
+
         DebugService.Record(
             "SANTANDER",
             $"Memória contextual atualizada | Banco: {entry.Banco} | Contexto: {entry.Contexto} | Convênio: {entry.Convenio} | Empresa: {entry.Empresa} | Período: {entry.Periodo} | Pagamentos: {entry.TotalPagamentos} | Valor total: {entry.ValorTotal}.",
@@ -426,6 +441,103 @@ public static class SantanderCommitmentMemoryService
             Entries.Remove(obsolete.StorageKey);
     }
 
+    private static string ResolvePersistenceDirectory()
+    {
+        const string AlexandreUser = @"C:\Users\Alexandre Mallorca";
+        const string AlexandreData = @"C:\Users\Alexandre Mallorca\OneDrive - Positiva Administradora de Benefícios Ltda\Documentos\Financeiro\HUB Financeiro\data";
+        const string ViniciusUser = @"C:\Users\Vinícius Oliveira";
+        const string ViniciusData = @"C:\Users\Vinícius Oliveira\Positiva Administradora de Benefícios Ltda\Alexandre Mallorca Silveira - data";
+
+        if (Directory.Exists(AlexandreUser))
+            return AlexandreData;
+
+        if (Directory.Exists(ViniciusUser))
+            return ViniciusData;
+
+        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+    }
+
+    private static void LoadPersistedEntries()
+    {
+        try
+        {
+            Directory.CreateDirectory(PersistenceDirectory);
+            if (!File.Exists(PersistencePath))
+                return;
+
+            var json = File.ReadAllText(PersistencePath, Encoding.UTF8);
+            var savedEntries = JsonSerializer.Deserialize<List<SantanderCommitmentMemoryEntry>>(
+                json,
+                PersistenceJsonOptions) ?? new List<SantanderCommitmentMemoryEntry>();
+
+            lock (Sync)
+            {
+                Entries.Clear();
+                foreach (var entry in savedEntries.OrderBy(entry => entry.AtualizadoEm))
+                {
+                    if (!string.IsNullOrWhiteSpace(entry.StorageKey))
+                        Entries[entry.StorageKey] = entry;
+                }
+
+                var contextKeys = Entries.Values
+                    .Select(entry => entry.ContextKey)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                foreach (var contextKey in contextKeys)
+                    TrimUnsafe(contextKey);
+            }
+
+            DebugService.Record(
+                "OPEX",
+                $"Histórico persistente carregado | {Entries.Count} snapshot(s) | arquivo: {PersistencePath}.",
+                DebugEntryLevel.System);
+        }
+        catch (Exception ex)
+        {
+            DebugService.Record(
+                "OPEX",
+                $"Não foi possível carregar o histórico persistente ({ex.GetType().Name}). O HUB continuará operando e tentará salvar novamente nas próximas capturas.",
+                DebugEntryLevel.Warning);
+        }
+    }
+
+    private static void PersistEntriesToDisk()
+    {
+        List<SantanderCommitmentMemoryEntry> snapshot;
+        lock (Sync)
+        {
+            snapshot = Entries.Values
+                .OrderByDescending(entry => entry.AtualizadoEm)
+                .ToList();
+        }
+
+        lock (PersistenceSync)
+        {
+            string? temporaryPath = null;
+            try
+            {
+                Directory.CreateDirectory(PersistenceDirectory);
+                temporaryPath = PersistencePath + ".tmp";
+
+                var json = JsonSerializer.Serialize(snapshot, PersistenceJsonOptions);
+                File.WriteAllText(temporaryPath, json, new UTF8Encoding(false));
+                File.Move(temporaryPath, PersistencePath, true);
+            }
+            catch (Exception ex)
+            {
+                if (!string.IsNullOrWhiteSpace(temporaryPath))
+                {
+                    try { File.Delete(temporaryPath); } catch { }
+                }
+
+                DebugService.Record(
+                    "OPEX",
+                    $"Falha não crítica ao salvar histórico persistente ({ex.GetType().Name}).",
+                    DebugEntryLevel.Warning);
+            }
+        }
+    }
     private static ContextDetection DetectCompanyContext()
     {
         var window = DetectSantanderWindow();

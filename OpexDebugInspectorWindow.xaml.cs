@@ -32,7 +32,7 @@ public partial class OpexDebugInspectorWindow : Window
         ReloadMemory(preserveSelection: false);
         DebugService.Record(
             "OPEX",
-            "Inspetor de memória temporária aberto.",
+            "Inspetor de histórico persistente aberto.",
             DebugEntryLevel.Action);
     }
 
@@ -63,8 +63,8 @@ public partial class OpexDebugInspectorWindow : Window
             _contexts.Add(new ContextViewModel { Entry = entry });
 
         MemoryCountText.Text = entries.Count == 1
-            ? "1 snapshot em memória"
-            : $"{entries.Count} snapshots em memória";
+            ? "1 snapshot salvo"
+            : $"{entries.Count} snapshots salvos";
 
         if (_contexts.Count == 0)
         {
@@ -105,7 +105,7 @@ public partial class OpexDebugInspectorWindow : Window
 
     private void ShowEmptyState()
     {
-        ContextTitleText.Text = "Nenhum contexto em memória";
+        ContextTitleText.Text = "Nenhum contexto salvo";
         CompanyText.Text = "Abra Santander → Consultar compromissos e visualize um resultado para alimentar esta tela.";
         PeriodText.Text = "—";
         CountText.Text = "—";
@@ -123,8 +123,8 @@ public partial class OpexDebugInspectorWindow : Window
     {
         var result = System.Windows.MessageBox.Show(
             this,
-            "Limpar todos os snapshots temporários desta sessão?",
-            "Memória O.P.E.X.",
+            "Limpar todos os snapshots salvos no histórico? Esta ação também atualizará o arquivo JSON.",
+            "Histórico O.P.E.X.",
             System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Question);
 

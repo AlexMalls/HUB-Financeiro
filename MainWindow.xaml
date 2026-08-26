@@ -654,6 +654,68 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
+<Button Content="Infos Positiva"
+                                                   Background="Transparent"
+                                                   Foreground="{DynamicResource TextColor}"
+                                                   BorderThickness="0"
+                                                   Padding="15,10"
+                                                   Cursor="Hand"
+                                                   Click="InfosPositivaMenu_Click"
+                                                   HorizontalContentAlignment="Left"
+                                                   FontSize="13"
+                                                   Margin="5">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}"
+                                                                           CornerRadius="3"
+                                                                           Padding="{TemplateBinding Padding}">
+                                                                        <ContentPresenter/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+<Button Content="Sobre"
+                                                   Background="Transparent"
+                                                   Foreground="{DynamicResource TextColor}"
+                                                   BorderThickness="0"
+                                                   Padding="15,10"
+                                                   Cursor="Hand"
+                                                   Click="SobreMenu_Click"
+                                                   HorizontalContentAlignment="Left"
+                                                   FontSize="13"
+                                                   Margin="5">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}"
+                                                                           CornerRadius="3"
+                                                                           Padding="{TemplateBinding Padding}">
+                                                                        <ContentPresenter/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                         </StackPanel>
                                     </Border>
                                 </Popup>
