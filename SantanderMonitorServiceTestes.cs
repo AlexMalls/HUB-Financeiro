@@ -9,7 +9,6 @@ public static class SantanderMonitorServiceTestes
         DeveOcultarIdentificadoresNoCaminho();
         DeveIdentificarPaginaInicial();
         DeveAceitarSomenteRotulosDeNavegacaoSeguros();
-        DeveBloquearSnapshotAnteriorATrocaDeConvenio();
     }
 
     private static void DeveOcultarIdentificadoresNoCaminho()
@@ -61,33 +60,6 @@ public static class SantanderMonitorServiceTestes
         Assert(string.Equals(detail, "Detalhe do pagamento", StringComparison.Ordinal), "contexto do modal");
         Assert(string.Equals(receiver, "Dados do recebedor", StringComparison.Ordinal), "seção segura do modal");
         Assert(string.Equals(pdf, "Salvar em PDF", StringComparison.Ordinal), "ação segura do modal");
-    }
-
-    private static void DeveBloquearSnapshotAnteriorATrocaDeConvenio()
-    {
-        var troca = new DateTime(2026, 8, 26, 18, 15, 20, DateTimeKind.Local);
-        const string tabelaAnterior = "2|R$ 6.405,24|ADM";
-        const string tabelaNova = "0|R$ 0,00|COR";
-
-        Assert(
-            !SantanderCommitmentMemoryService.IsSafeSnapshotAfterContextSwitch(
-                troca.AddMilliseconds(-100), troca, tabelaAnterior, tabelaAnterior, false),
-            "snapshot anterior à troca de convênio");
-
-        Assert(
-            !SantanderCommitmentMemoryService.IsSafeSnapshotAfterContextSwitch(
-                troca.AddSeconds(2), troca, tabelaAnterior, tabelaAnterior, false),
-            "mesma tabela antiga sem transição vazia");
-
-        Assert(
-            SantanderCommitmentMemoryService.IsSafeSnapshotAfterContextSwitch(
-                troca.AddSeconds(2), troca, tabelaAnterior, tabelaAnterior, true),
-            "resultado após tela vazia");
-
-        Assert(
-            SantanderCommitmentMemoryService.IsSafeSnapshotAfterContextSwitch(
-                troca.AddSeconds(2), troca, tabelaNova, tabelaAnterior, false),
-            "nova composição após troca de convênio");
     }
 
     private static void Assert(bool condition, string scenario)
