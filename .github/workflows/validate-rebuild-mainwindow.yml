@@ -1,0 +1,35 @@
+name: Validate Exact MainWindow
+
+on:
+  push:
+    branches:
+      - feat/conferir-pagamentos-opex-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.event.head_commit.message == 'Dispara reconstrucao exata do MainWindow'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Rebuild exact MainWindow
+        shell: pwsh
+        run: ./.github/scripts/rebuild-mainwindow-exact.ps1
+      - name: Restore
+        run: dotnet restore HubFinanceiro.csproj
+      - name: Build
+        run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
+      - name: Commit exact XAML
+        shell: pwsh
+        run: |
+          git config core.autocrlf false
+          git add MainWindow.xaml
+          git config user.name "Alexandre Mallorca"
+          git config user.email "99052118+AlexMalls@users.noreply.github.com"
+          git commit -m "Mantém somente alteração real no MainWindow XAML"
+          git push
