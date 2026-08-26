@@ -9,6 +9,7 @@ namespace HubFinanceiro;
 public sealed record SantanderCommitmentMemoryEntry(
     string Banco,
     string Contexto,
+    string Convenio,
     string Empresa,
     DateTime AtualizadoEm,
     string DataInicial,
@@ -23,17 +24,16 @@ public sealed record SantanderCommitmentMemoryEntry(
         ? DataInicial
         : $"{DataInicial} → {DataFinal}";
 
-    public string ContextKey => $"{Banco}|{Contexto}";
-    public string StorageKey => $"{Banco}|{Contexto}|{DataInicial}|{DataFinal}";
+    public string ContextKey => $"{Banco}|{Contexto}|{Convenio}";
+    public string StorageKey => $"{Banco}|{Contexto}|{Convenio}|{DataInicial}|{DataFinal}";
 }
 
 /// <summary>
 /// Memória temporária dos últimos resultados efetivamente observados na tela
 /// Consultar compromissos. Nada é persistido em disco.
 ///
-/// A memória considera Banco + Empresa/Contexto + composição visível da tabela.
-/// Assim, trocar o convênio de Administradora para Corretora é reconhecido mesmo
-/// quando ambos os contextos exibem exatamente os mesmos pagamentos.
+/// O número do convênio visível no cabeçalho é a fonte de verdade para definir
+/// Administradora x Corretora. O nome da empresa é usado apenas como metadado.
 /// </summary>
 public static class SantanderCommitmentMemoryService
 {
@@ -43,6 +43,8 @@ public static class SantanderCommitmentMemoryService
     private const int MaxEntriesTotal = 12;
     private const string BankName = "Santander";
     private const string EdgeProcessName = "msedge";
+    private const string AdministradoraConvenio = "0033-3409-004902845301";
+    private const string CorretoraConvenio = "0033-4268-004905078983";
 
     private static readonly object Sync = new();
     private static readonly Dictionary<string, SantanderCommitmentMemoryEntry> Entries =
@@ -279,14 +281,19 @@ public static class SantanderCommitmentMemoryService
             if (!detection.OnCommitmentScreen)
                 return;
 
-            if (string.IsNullOrWhiteSpace(detection.Empresa) ||
+            if (string.IsNullOrWhiteSpace(detection.Convenio) ||
                 string.Equals(detection.Contexto, "Não identificado", StringComparison.OrdinalIgnoreCase))
             {
-                PublishContextDiagnosticOnce("Empresa/contexto ainda não foi exposto de forma visível; snapshot aguardará a próxima sonda.");
+                PublishContextDiagnosticOnce(
+                    "Número do convênio conhecido ainda não foi exposto de forma visível; snapshot aguardará a próxima sonda.");
                 return;
             }
 
-            var contextKey = $"{BankName}|{detection.Contexto}";
+            var company = string.IsNullOrWhiteSpace(detection.Empresa)
+                ? "Empresa não identificada"
+                : detection.Empresa;
+
+            var contextKey = $"{BankName}|{detection.Contexto}|{detection.Convenio}";
             var contextChanged = false;
             string previousContext;
 
@@ -309,15 +316,14 @@ public static class SantanderCommitmentMemoryService
 
                 DebugService.Record(
                     "SANTANDER",
-                    $"Contexto bancário detectado/alterado | {previousDisplay} → {BankName} — {detection.Contexto} | Empresa: {detection.Empresa}.",
+                    $"Contexto bancário detectado/alterado | {previousDisplay} → {BankName} — {detection.Contexto} | Convênio: {detection.Convenio} | Empresa: {company}.",
                     DebugEntryLevel.Action);
             }
 
-            // A assinatura deliberadamente NÃO inclui o período dos inputs. Assim,
-            // mudar apenas o calendário sem carregar uma nova tabela continua sem
-            // sobrescrever a memória. O contexto, porém, faz parte da assinatura:
-            // a mesma tabela em Administradora e Corretora vira dois snapshots.
-            var compositeSignature = $"{contextKey}|{NormalizeWhitespace(detection.Empresa)}|{tableSignature}";
+            // O número do convênio é a fonte de verdade do contexto. A assinatura
+            // não inclui o período dos inputs para não associar uma tabela antiga a
+            // uma data recém-selecionada antes do resultado realmente ser carregado.
+            var compositeSignature = $"{contextKey}|{tableSignature}";
 
             lock (Sync)
             {
@@ -327,12 +333,12 @@ public static class SantanderCommitmentMemoryService
                 _lastStoredCompositeSignature = compositeSignature;
             }
 
-            Store(snapshot, detection.Contexto, detection.Empresa);
+            Store(snapshot, detection.Contexto, detection.Convenio, company);
         }
         catch (Exception ex)
         {
             PublishContextDiagnosticOnce(
-                $"Falha temporária ao identificar contexto ({ex.GetType().Name}); nenhum snapshot será classificado incorretamente.");
+                $"Falha temporária ao identificar convênio/contexto ({ex.GetType().Name}); nenhum snapshot será classificado incorretamente.");
         }
         finally
         {
@@ -362,7 +368,7 @@ public static class SantanderCommitmentMemoryService
         }
     }
 
-    private static void Store(SantanderCommitmentSnapshot snapshot, string context, string company)
+    private static void Store(SantanderCommitmentSnapshot snapshot, string context, string convenio, string company)
     {
         var dataInicial = snapshot.DataInicial?.Trim() ?? string.Empty;
         var dataFinal = snapshot.DataFinal?.Trim() ?? dataInicial;
@@ -375,6 +381,7 @@ public static class SantanderCommitmentMemoryService
         var entry = new SantanderCommitmentMemoryEntry(
             BankName,
             context,
+            convenio,
             company,
             DateTime.Now,
             dataInicial,
@@ -393,7 +400,7 @@ public static class SantanderCommitmentMemoryService
 
         DebugService.Record(
             "SANTANDER",
-            $"Memória contextual atualizada | Banco: {entry.Banco} | Contexto: {entry.Contexto} | Empresa: {entry.Empresa} | Período: {entry.Periodo} | Pagamentos: {entry.TotalPagamentos} | Valor total: {entry.ValorTotal}.",
+            $"Memória contextual atualizada | Banco: {entry.Banco} | Contexto: {entry.Contexto} | Convênio: {entry.Convenio} | Empresa: {entry.Empresa} | Período: {entry.Periodo} | Pagamentos: {entry.TotalPagamentos} | Valor total: {entry.ValorTotal}.",
             DebugEntryLevel.Background);
 
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => MemoryChanged?.Invoke()));
@@ -429,6 +436,11 @@ public static class SantanderCommitmentMemoryService
 
         if (!FindAnyExactName(root, CommitmentScreenNames))
             return ContextDetection.NotAvailable;
+
+        // Fonte de verdade: Número do convênio visível no cabeçalho da própria
+        // tela Consultar compromissos. O nome da empresa é apenas metadado visual.
+        var convenio = FindVisibleKnownConvenio(root);
+        var context = ClassifyContextFromConvenio(convenio);
 
         var candidates = new List<CompanyCandidate>();
         try
@@ -475,10 +487,44 @@ public static class SantanderCommitmentMemoryService
             .Select(candidate => candidate.Text)
             .FirstOrDefault();
 
-        if (string.IsNullOrWhiteSpace(company))
-            return new ContextDetection(true, "Não identificado", string.Empty);
+        return new ContextDetection(
+            true,
+            context,
+            company ?? string.Empty,
+            convenio);
+    }
 
-        return new ContextDetection(true, ClassifyContext(company), company);
+    private static string FindVisibleKnownConvenio(AutomationElement root)
+    {
+        var matches = new List<CompanyCandidate>();
+
+        foreach (var known in new[] { AdministradoraConvenio, CorretoraConvenio })
+        {
+            try
+            {
+                var elements = root.FindAll(
+                    TreeScope.Descendants,
+                    new PropertyCondition(
+                        AutomationElement.NameProperty,
+                        known,
+                        PropertyConditionFlags.IgnoreCase));
+
+                foreach (AutomationElement element in elements)
+                {
+                    if (TryGetVisibleRectangle(element, out var top, out var left))
+                        matches.Add(new CompanyCandidate(known, top, left));
+                }
+            }
+            catch (Exception ex) when (IsExpectedUiAutomationException(ex))
+            {
+            }
+        }
+
+        return matches
+            .OrderBy(candidate => candidate.Top)
+            .ThenBy(candidate => candidate.Left)
+            .Select(candidate => candidate.Text)
+            .FirstOrDefault() ?? string.Empty;
     }
 
     private static bool FindAnyExactName(AutomationElement root, IEnumerable<string> names)
@@ -541,19 +587,13 @@ public static class SantanderCommitmentMemoryService
         return score;
     }
 
-    private static string ClassifyContext(string company)
+    private static string ClassifyContextFromConvenio(string convenio)
     {
-        if (company.Contains("CORRETORA", StringComparison.OrdinalIgnoreCase) ||
-            company.Contains("SEGUROS", StringComparison.OrdinalIgnoreCase))
-        {
+        if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
             return "Corretora";
-        }
 
-        if (company.Contains("ADMINISTRADORA", StringComparison.OrdinalIgnoreCase) ||
-            company.Contains("BENEF", StringComparison.OrdinalIgnoreCase))
-        {
+        if (string.Equals(convenio, AdministradoraConvenio, StringComparison.OrdinalIgnoreCase))
             return "Administradora";
-        }
 
         return "Não identificado";
     }
@@ -653,9 +693,10 @@ public static class SantanderCommitmentMemoryService
         ex is ElementNotAvailableException or InvalidOperationException or COMException;
 
     private sealed record CompanyCandidate(string Text, double Top, double Left);
-    private sealed record ContextDetection(bool OnCommitmentScreen, string Contexto, string Empresa)
+    private sealed record ContextDetection(bool OnCommitmentScreen, string Contexto, string Empresa, string Convenio)
     {
-        public static ContextDetection NotAvailable { get; } = new(false, "Não identificado", string.Empty);
+        public static ContextDetection NotAvailable { get; } =
+            new(false, "Não identificado", string.Empty, string.Empty);
     }
 
     private readonly record struct WindowCandidate(IntPtr Handle, uint ProcessId);
