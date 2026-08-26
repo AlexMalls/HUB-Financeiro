@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   patch-build:
-    if: github.event.head_commit.message == 'Ajusta patch regex de empresa por convênio'
+    if: github.event.head_commit.message == 'Aplica patch cirurgico de empresa por convenio'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,82 +23,51 @@ jobs:
         run: |
           @'
           from pathlib import Path
-          import re
 
           path = Path('SantanderCommitmentMemoryService.cs')
           s = path.read_text(encoding='utf-8')
 
-          constants_pattern = re.compile(
-              r'(?m)^(\s*)private const string AdministradoraConvenio = "0033-3409-004902845301";\s*\n\1private const string CorretoraConvenio = "0033-4268-004905078983";')
+          old_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
+    private const string CorretoraConvenio = "0033-4268-004905078983";'''
+          new_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
+    private const string CorretoraConvenio = "0033-4268-004905078983";
+    private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";
+    private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'''
+          if old_constants not in s:
+              raise SystemExit('constants target not found')
+          s = s.replace(old_constants, new_constants, 1)
 
-          def replace_constants(match):
-              indent = match.group(1)
-              return (
-                  f'{indent}private const string AdministradoraConvenio = "0033-3409-004902845301";\n'
-                  f'{indent}private const string CorretoraConvenio = "0033-4268-004905078983";\n'
-                  f'{indent}private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";\n'
-                  f'{indent}private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'
-              )
-
-          s, count = constants_pattern.subn(replace_constants, s, count=1)
-          if count != 1:
-              raise SystemExit('constants patch failed')
-
-          detect_pattern = re.compile(
-              r'    private static ContextDetection DetectCompanyContext\(\)\r?\n    \{.*?\r?\n    \}\r?\n\r?\n(?=    private static bool FindAnyExactName)',
-              re.S)
-          detect_replacement = '''    private static ContextDetection DetectCompanyContext()
-          {
-              var window = DetectSantanderWindow();
-              if (window == null)
-                  return ContextDetection.NotAvailable;
-
-              var root = AutomationElement.FromHandle(window.Value.Handle);
-              if (root == null)
-                  return ContextDetection.NotAvailable;
-
-              if (!FindAnyExactName(root, CommitmentScreenNames))
-                  return ContextDetection.NotAvailable;
-
-              // Convênio é a fonte de verdade tanto para o contexto quanto para o
-              // nome da empresa. A árvore do Edge pode manter textos residuais do
-              // convênio anterior após Trocar Convênio, então não usamos esses textos.
-              var convenio = FindVisibleKnownConvenio(root);
-              var context = ClassifyContextFromConvenio(convenio);
-              var company = CanonicalCompanyNameFromConvenio(convenio);
-
-              return new ContextDetection(
-                  true,
-                  context,
-                  company,
-                  convenio);
-          }
-
-          '''
-          s, count = detect_pattern.subn(detect_replacement, s, count=1)
-          if count != 1:
-              raise SystemExit('DetectCompanyContext patch failed')
+          old_return = '''        return new ContextDetection(
+            true,
+            context,
+            company ?? string.Empty,
+            convenio);'''
+          new_return = '''        return new ContextDetection(
+            true,
+            context,
+            CanonicalCompanyNameFromConvenio(convenio),
+            convenio);'''
+          if old_return not in s:
+              raise SystemExit('context return target not found')
+          s = s.replace(old_return, new_return, 1)
 
           marker = '    private static string ClassifyContextFromConvenio(string convenio)\n'
-          if marker not in s:
-              marker = '    private static string ClassifyContextFromConvenio(string convenio)\r\n'
           if marker not in s:
               raise SystemExit('classify marker not found')
 
           canonical_method = '''    private static string CanonicalCompanyNameFromConvenio(string convenio)
-          {
-              if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
-                  return CorretoraCompanyName;
+    {
+        if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
+            return CorretoraCompanyName;
 
-              if (string.Equals(convenio, AdministradoraConvenio, StringComparison.OrdinalIgnoreCase))
-                  return AdministradoraCompanyName;
+        if (string.Equals(convenio, AdministradoraConvenio, StringComparison.OrdinalIgnoreCase))
+            return AdministradoraCompanyName;
 
-              return "Empresa não identificada";
-          }
+        return "Empresa não identificada";
+    }
 
-          '''
+'''
           s = s.replace(marker, canonical_method + marker, 1)
-
           path.write_text(s, encoding='utf-8', newline='\n')
           '@ | Set-Content patch.py -Encoding UTF8
           python patch.py
