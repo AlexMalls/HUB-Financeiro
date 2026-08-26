@@ -318,19 +318,28 @@ public static class OpexPaymentReconciliationService
                 matches.Add(candidate);
             }
 
-            // Se ainda sobrarem itens de mesmo valor, pareia por quantidade.
-            // Isto preserva a semântica de multiconjunto e resolve casos em que o
-            // nome Santander vem abreviado/diferente do cadastro do HUB.
+            // Valor sozinho não comprova identidade. Se os dois lados expõem nome
+            // e não há qualquer afinidade entre eles, deixamos os itens sem casar
+            // para que a divergência apareça ao usuário em vez de gerar falso OK.
+            // O fallback só é permitido no caso único em que uma das pontas não
+            // expõe nome suficiente para comparação.
             var remainingHub = availableHub.Where(index => !usedHub[index]).ToList();
             var remainingBank = availableBank.Where(index => !usedBank[index]).ToList();
-            var fallbackCount = Math.Min(remainingHub.Count, remainingBank.Count);
 
-            for (var i = 0; i < fallbackCount; i++)
+            if (remainingHub.Count == 1 && remainingBank.Count == 1)
             {
-                var match = new PaymentMatch(remainingHub[i], remainingBank[i], 0);
-                usedHub[match.HubIndex] = true;
-                usedBank[match.BankIndex] = true;
-                matches.Add(match);
+                var hubIndex = remainingHub[0];
+                var bankIndex = remainingBank[0];
+                var hubName = NormalizeName(hub[hubIndex].NomeFornecedor);
+                var bankName = NormalizeName(bank[bankIndex].Favorecido);
+
+                if (string.IsNullOrWhiteSpace(hubName) || string.IsNullOrWhiteSpace(bankName))
+                {
+                    var match = new PaymentMatch(hubIndex, bankIndex, 0);
+                    usedHub[match.HubIndex] = true;
+                    usedBank[match.BankIndex] = true;
+                    matches.Add(match);
+                }
             }
         }
 

@@ -8,6 +8,7 @@ public static class OpexPaymentReconciliationServiceTestes
         DeveDetectarPagamentoPendenteQueJaExisteNoHub();
         DeveDetectarNoBancoAusenteNoSantander();
         DeveDistinguirPagamentosDeMesmoValorPorNome();
+        DeveNaoCasarSomentePorValorQuandoFavorecidosDiferem();
         DeveAvisarQuandoNaoHaMemoriaBancariaDaEmpresa();
     }
 
@@ -99,6 +100,22 @@ public static class OpexPaymentReconciliationServiceTestes
         Assert(issue.Fornecedor == "Alpha Serviços Ltda", "afinidade de nome deve preservar o fornecedor correto quando valores se repetem");
     }
 
+    private static void DeveNaoCasarSomentePorValorQuandoFavorecidosDiferem()
+    {
+        var data = new DateTime(2026, 8, 26);
+        var hub = new[] { Hub(1, "Alpha Serviços Ltda", 500m, "ADM", "No Banco", data) };
+        var banco = new[] { Banco("Beta Comércio Ltda", 500m, data, 99) };
+
+        var result = OpexPaymentReconciliationService.Conferir(
+            data,
+            hub,
+            new[] { Memoria("Administradora", data, banco), Memoria("Corretora", data, Array.Empty<SantanderCommitmentItem>(), 0) });
+
+        Assert(result.Administradora.Divergencias.Count(i => i.Tipo == OpexPaymentReconciliationIssueKind.HubNoBancoAusenteNoSantander) == 1,
+            "mesmo valor com favorecido diferente não pode validar o No Banco");
+        Assert(result.Administradora.Divergencias.Count(i => i.Tipo == OpexPaymentReconciliationIssueKind.SantanderAusenteNoHub) == 1,
+            "mesmo valor com favorecido diferente deve manter a linha Santander sem correspondência");
+    }
     private static void DeveAvisarQuandoNaoHaMemoriaBancariaDaEmpresa()
     {
         var data = new DateTime(2026, 8, 26);
