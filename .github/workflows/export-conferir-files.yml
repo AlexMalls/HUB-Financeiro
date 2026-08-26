@@ -1,0 +1,29 @@
+name: Export Conferir Pagamentos Sources
+
+on:
+  push:
+    branches:
+      - artifact/conferir-pagamentos-20260826
+
+jobs:
+  export:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hub-conferir-pagamentos-sources
+          path: |
+            ConferirPagamentosWindow.xaml
+            ConferirPagamentosWindow.xaml.cs
+            CustomMessageBox.xaml.cs
+            MainWindow.ConferirPagamentos.cs
+            MainWindow.xaml
+            OpexPaymentReconciliationService.cs
+            OpexPaymentReconciliationServiceTestes.cs
+            Program.cs
+            SantanderCommitmentAnalyzerService.cs
+            SantanderCommitmentMemoryService.cs
+            SelecionarDataWindow.xaml
+            SelecionarDataWindow.xaml.cs
+          if-no-files-found: error
