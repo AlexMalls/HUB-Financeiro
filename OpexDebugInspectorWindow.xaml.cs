@@ -172,14 +172,14 @@ public partial class OpexDebugInspectorWindow : Window
 
     private void ClearMemoryButton_Click(object sender, RoutedEventArgs e)
     {
-        var result = MessageBox.Show(
+        var result = System.Windows.MessageBox.Show(
             this,
             "Limpar todos os snapshots temporários desta sessão?",
             "Memória O.P.E.X.",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
 
-        if (result == MessageBoxResult.Yes)
+        if (result == System.Windows.MessageBoxResult.Yes)
             SantanderCommitmentMemoryService.Clear();
     }
 }
