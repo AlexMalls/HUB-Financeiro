@@ -45,6 +45,8 @@ public static class SantanderCommitmentMemoryService
     private const string EdgeProcessName = "msedge";
     private const string AdministradoraConvenio = "0033-3409-004902845301";
     private const string CorretoraConvenio = "0033-4268-004905078983";
+    private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";
+    private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";
 
     private static readonly object Sync = new();
     private static readonly Dictionary<string, SantanderCommitmentMemoryEntry> Entries =
@@ -490,7 +492,7 @@ public static class SantanderCommitmentMemoryService
         return new ContextDetection(
             true,
             context,
-            company ?? string.Empty,
+            CanonicalCompanyNameFromConvenio(convenio),
             convenio);
     }
 
@@ -587,6 +589,16 @@ public static class SantanderCommitmentMemoryService
         return score;
     }
 
+    private static string CanonicalCompanyNameFromConvenio(string convenio)
+    {
+        if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
+            return CorretoraCompanyName;
+
+        if (string.Equals(convenio, AdministradoraConvenio, StringComparison.OrdinalIgnoreCase))
+            return AdministradoraCompanyName;
+
+        return "Empresa não identificada";
+    }
     private static string ClassifyContextFromConvenio(string convenio)
     {
         if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
@@ -720,3 +732,4 @@ public static class SantanderCommitmentMemoryService
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out uint processId);
 }
+
