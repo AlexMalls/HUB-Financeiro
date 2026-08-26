@@ -8,6 +8,7 @@ public static class SantanderMonitorServiceTestes
         DeveRemoverDadosDeSessaoDaUrl();
         DeveOcultarIdentificadoresNoCaminho();
         DeveIdentificarPaginaInicial();
+        DeveAceitarSomenteRotulosDeNavegacaoSeguros();
     }
 
     private static void DeveOcultarIdentificadoresNoCaminho()
@@ -38,6 +39,21 @@ public static class SantanderMonitorServiceTestes
         const string url = "https://pj.santandernetibe.com.br/ibeweb/pages/home/home.xhtml";
         var page = SantanderMonitorService.InferPage(url, "Internet Banking");
         Assert(string.Equals(page, "Início", StringComparison.Ordinal), "rota da página inicial");
+    }
+
+    private static void DeveAceitarSomenteRotulosDeNavegacaoSeguros()
+    {
+        var safe = SantanderMonitorService.SanitizeNavigationLabel("  Consultar   compromissos  ");
+        var account = SantanderMonitorService.SanitizeNavigationLabel("Consultar conta 123456");
+        var amount = SantanderMonitorService.SanitizeNavigationLabel("Confirmar pagamento R$ 900,00");
+        var unrelated = SantanderMonitorService.SanitizeNavigationLabel("Texto aleatório");
+        var potentiallySensitive = SantanderMonitorService.SanitizeNavigationLabel("Pagamento de Pessoa Exemplo");
+
+        Assert(string.Equals(safe, "Consultar compromissos", StringComparison.Ordinal), "rótulo seguro");
+        Assert(account == null, "rótulo com identificador");
+        Assert(amount == null, "rótulo com valor");
+        Assert(unrelated == null, "texto fora da navegação");
+        Assert(string.Equals(potentiallySensitive, "Pagamentos", StringComparison.Ordinal), "canonização de rótulo");
     }
 
     private static void Assert(bool condition, string scenario)
