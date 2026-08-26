@@ -168,6 +168,10 @@ public static class SantanderCommitmentMemoryService
             _lastSeenTableSignature = string.Empty;
             _lastStoredCompositeSignature = string.Empty;
             _lastDetectedContextKey = string.Empty;
+            _pendingContextKey = string.Empty;
+            _pendingContextBaselineTableSignature = string.Empty;
+            _pendingContextDetectedAt = DateTime.MinValue;
+            _pendingContextSawEmptyResult = false;
             _lastContextDiagnostic = string.Empty;
             _nextContextProbeUtc = DateTime.MinValue;
             _captureInProgress = false;

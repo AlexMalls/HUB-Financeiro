@@ -28,6 +28,7 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Cursor" Value="IBeam"/>
+            <Setter Property="IsTabStop" Value="False"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="SelectionBrush" Value="#6E3AA4"/>
             <Setter Property="SelectionOpacity" Value="0.75"/>
