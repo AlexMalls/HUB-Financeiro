@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -8,26 +9,18 @@ public partial class OpexDebugInspectorWindow : Window
 {
     private sealed class ContextViewModel
     {
-        public string Key { get; init; } = string.Empty;
-        public string Titulo { get; init; } = string.Empty;
-        public string Subtitulo { get; init; } = string.Empty;
-        public IReadOnlyList<PeriodViewModel> Periodos { get; init; } = Array.Empty<PeriodViewModel>();
-    }
-
-    private sealed class PeriodViewModel
-    {
         public SantanderCommitmentMemoryEntry Entry { get; init; } = null!;
-        public string PeriodoDisplay => $"{Entry.Periodo} • {Entry.AtualizadoEm:HH:mm:ss}";
+        public string Key => Entry.StorageKey;
+        public string Titulo => $"{Entry.Banco} — {Entry.Contexto}";
+        public string Subtitulo => $"{Entry.Periodo} ({Entry.AtualizadoEm:dd/MM/yy HH:mm})";
     }
 
     private readonly ObservableCollection<ContextViewModel> _contexts = new();
-    private readonly ObservableCollection<PeriodViewModel> _periods = new();
 
     public OpexDebugInspectorWindow()
     {
         InitializeComponent();
         ContextList.ItemsSource = _contexts;
-        PeriodCombo.ItemsSource = _periods;
 
         Loaded += OpexDebugInspectorWindow_Loaded;
         Closed += OpexDebugInspectorWindow_Closed;
@@ -55,35 +48,19 @@ public partial class OpexDebugInspectorWindow : Window
 
     private void ReloadMemory(bool preserveSelection)
     {
-        var selectedContextKey = preserveSelection
+        var selectedKey = preserveSelection
             ? (ContextList.SelectedItem as ContextViewModel)?.Key
             : null;
 
-        var selectedPeriodKey = preserveSelection
-            ? (PeriodCombo.SelectedItem as PeriodViewModel)?.Entry.StorageKey
-            : null;
-
-        var entries = SantanderCommitmentMemoryService.Snapshot();
-        var groups = entries
-            .GroupBy(entry => entry.ContextKey, StringComparer.OrdinalIgnoreCase)
-            .Select(group =>
-            {
-                var ordered = group.OrderByDescending(entry => entry.AtualizadoEm).ToList();
-                var latest = ordered[0];
-                return new ContextViewModel
-                {
-                    Key = group.Key,
-                    Titulo = $"{latest.Banco} — {latest.Contexto}",
-                    Subtitulo = $"{ordered.Count} período(s) • último {latest.AtualizadoEm:dd/MM HH:mm}",
-                    Periodos = ordered.Select(entry => new PeriodViewModel { Entry = entry }).ToList()
-                };
-            })
-            .OrderBy(group => group.Titulo, StringComparer.CurrentCultureIgnoreCase)
+        var entries = SantanderCommitmentMemoryService.Snapshot()
+            .OrderByDescending(entry => ParsePeriodStart(entry.DataInicial) ?? DateTime.MinValue)
+            .ThenBy(entry => ContextOrder(entry.Contexto))
+            .ThenByDescending(entry => entry.AtualizadoEm)
             .ToList();
 
         _contexts.Clear();
-        foreach (var group in groups)
-            _contexts.Add(group);
+        foreach (var entry in entries)
+            _contexts.Add(new ContextViewModel { Entry = entry });
 
         MemoryCountText.Text = entries.Count == 1
             ? "1 snapshot em memória"
@@ -91,56 +68,26 @@ public partial class OpexDebugInspectorWindow : Window
 
         if (_contexts.Count == 0)
         {
-            _periods.Clear();
             ContextList.SelectedItem = null;
             ShowEmptyState();
             return;
         }
 
-        var contextToSelect = !string.IsNullOrWhiteSpace(selectedContextKey)
-            ? _contexts.FirstOrDefault(item => string.Equals(item.Key, selectedContextKey, StringComparison.OrdinalIgnoreCase))
+        var itemToSelect = !string.IsNullOrWhiteSpace(selectedKey)
+            ? _contexts.FirstOrDefault(item => string.Equals(item.Key, selectedKey, StringComparison.OrdinalIgnoreCase))
             : null;
-        contextToSelect ??= _contexts[0];
-        ContextList.SelectedItem = contextToSelect;
 
-        LoadPeriods(contextToSelect, selectedPeriodKey);
+        itemToSelect ??= _contexts[0];
+        ContextList.SelectedItem = itemToSelect;
+        ShowEntry(itemToSelect.Entry);
     }
 
     private void ContextList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ContextList.SelectedItem is ContextViewModel context)
-            LoadPeriods(context, selectedPeriodKey: null);
+            ShowEntry(context.Entry);
         else
             ShowEmptyState();
-    }
-
-    private void LoadPeriods(ContextViewModel context, string? selectedPeriodKey)
-    {
-        _periods.Clear();
-        foreach (var period in context.Periodos)
-            _periods.Add(period);
-
-        ContextTitleText.Text = context.Titulo;
-        CompanyText.Text = context.Periodos.FirstOrDefault()?.Entry.Empresa ?? string.Empty;
-
-        if (_periods.Count == 0)
-        {
-            ShowEmptyState();
-            return;
-        }
-
-        var periodToSelect = !string.IsNullOrWhiteSpace(selectedPeriodKey)
-            ? _periods.FirstOrDefault(item => string.Equals(item.Entry.StorageKey, selectedPeriodKey, StringComparison.OrdinalIgnoreCase))
-            : null;
-        periodToSelect ??= _periods[0];
-        PeriodCombo.SelectedItem = periodToSelect;
-        ShowEntry(periodToSelect.Entry);
-    }
-
-    private void PeriodCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (PeriodCombo.SelectedItem is PeriodViewModel period)
-            ShowEntry(period.Entry);
     }
 
     private void ShowEntry(SantanderCommitmentMemoryEntry entry)
@@ -181,5 +128,24 @@ public partial class OpexDebugInspectorWindow : Window
 
         if (result == System.Windows.MessageBoxResult.Yes)
             SantanderCommitmentMemoryService.Clear();
+    }
+
+    private static DateTime? ParsePeriodStart(string value)
+    {
+        return DateTime.TryParseExact(
+            value,
+            "dd/MM/yyyy",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private static int ContextOrder(string context)
+    {
+        if (context.Equals("Administradora", StringComparison.OrdinalIgnoreCase)) return 0;
+        if (context.Equals("Corretora", StringComparison.OrdinalIgnoreCase)) return 1;
+        return 2;
     }
 }
