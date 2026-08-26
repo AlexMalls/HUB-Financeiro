@@ -1,0 +1,248 @@
+<Window x:Class="HubFinanceiro.OpexDebugInspectorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Debug O.P.E.X. - Memória temporária"
+        Width="1180"
+        Height="700"
+        MinWidth="920"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="#171719"
+        Foreground="White">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Surface" Color="#202024"/>
+        <SolidColorBrush x:Key="SurfaceAlt" Color="#29292E"/>
+        <SolidColorBrush x:Key="Border" Color="#3A3A42"/>
+        <SolidColorBrush x:Key="Accent" Color="#7920DC"/>
+        <SolidColorBrush x:Key="LiveGreen" Color="#55D98A"/>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2D2D33"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#484850"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="13,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#2C2C31"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#494950"/>
+            <Setter Property="Padding" Value="8,5"/>
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#151517"/>
+            <Setter Property="Foreground" Value="#E8E8EA"/>
+            <Setter Property="BorderBrush" Value="#36363D"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#2F2F35"/>
+            <Setter Property="RowBackground" Value="#19191C"/>
+            <Setter Property="AlternatingRowBackground" Value="#1E1E22"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="2,0,2,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text=""
+                               FontFamily="Segoe MDL2 Assets"
+                               Foreground="{StaticResource LiveGreen}"
+                               FontSize="21"
+                               VerticalAlignment="Center"
+                               Margin="0,0,9,0"/>
+                    <TextBlock Text="Por trás da O.P.E.X."
+                               FontSize="21"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="Memória temporária dos últimos resultados realmente observados nos contextos bancários."
+                           Foreground="#A9A9B0"
+                           FontSize="12"
+                           Margin="30,4,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="Atualizar tela" Click="RefreshButton_Click" Margin="0,0,8,0"/>
+                <Button Content="Limpar memória" Click="ClearMemoryButton_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="270"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource Border}"
+                    BorderThickness="1"
+                    CornerRadius="9"
+                    Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Contextos"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#DADADF"
+                               Margin="4,2,0,9"/>
+                    <ListBox x:Name="ContextList"
+                             Grid.Row="1"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             SelectionChanged="ContextList_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#29292E"
+                                        BorderBrush="#3D3D45"
+                                        BorderThickness="1"
+                                        CornerRadius="7"
+                                        Padding="10"
+                                        Margin="0,0,0,7">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Titulo}"
+                                                   Foreground="White"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="13"/>
+                                        <TextBlock Text="{Binding Subtitulo}"
+                                                   Foreground="#9A9AA2"
+                                                   FontSize="11"
+                                                   Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource Border}"
+                    BorderThickness="1"
+                    CornerRadius="9"
+                    Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="300"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock x:Name="ContextTitleText"
+                                       Text="Nenhum contexto em memória"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock x:Name="CompanyText"
+                                       Foreground="#9999A2"
+                                       FontSize="11"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <ComboBox x:Name="PeriodCombo"
+                                  Grid.Column="1"
+                                  DisplayMemberPath="PeriodoDisplay"
+                                  SelectionChanged="PeriodCombo_SelectionChanged"/>
+                    </Grid>
+
+                    <Grid Grid.Row="1" Margin="0,15,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="11" Margin="0,0,7,0">
+                            <StackPanel>
+                                <TextBlock Text="PERÍODO" Foreground="#8E8E98" FontSize="10"/>
+                                <TextBlock x:Name="PeriodText" Text="—" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="11" Margin="0,0,7,0">
+                            <StackPanel>
+                                <TextBlock Text="PAGAMENTOS" Foreground="#8E8E98" FontSize="10"/>
+                                <TextBlock x:Name="CountText" Text="—" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="11" Margin="0,0,7,0">
+                            <StackPanel>
+                                <TextBlock Text="VALOR TOTAL" Foreground="#8E8E98" FontSize="10"/>
+                                <TextBlock x:Name="TotalValueText" Text="—" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="3" Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="11">
+                            <StackPanel>
+                                <TextBlock Text="ÚLTIMA CAPTURA" Foreground="#8E8E98" FontSize="10"/>
+                                <TextBlock x:Name="CapturedText" Text="—" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Grid.Row="2"
+                               Text="Último resultado efetivamente visualizado para o período selecionado"
+                               Foreground="#9A9AA2"
+                               FontSize="11"
+                               Margin="2,0,0,7"/>
+
+                    <DataGrid x:Name="PaymentsGrid" Grid.Row="3">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Data" Binding="{Binding DataPagamento}" Width="95"/>
+                            <DataGridTextColumn Header="Favorecido" Binding="{Binding Favorecido}" Width="*" MinWidth="190"/>
+                            <DataGridTextColumn Header="Nº Pagamento" Binding="{Binding NumeroPagamento}" Width="130"/>
+                            <DataGridTextColumn Header="Nº Cliente" Binding="{Binding NumeroCliente}" Width="110"/>
+                            <DataGridTextColumn Header="Valor" Binding="{Binding Valor}" Width="100"/>
+                            <DataGridTextColumn Header="Tipo" Binding="{Binding TipoPagamento}" Width="95"/>
+                            <DataGridTextColumn Header="Situação" Binding="{Binding Situacao}" Width="95"/>
+                            <DataGridTextColumn Header="Canal" Binding="{Binding Canal}" Width="125"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="3,11,3,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="RAM da sessão • até 4 períodos por contexto • nenhum snapshot é salvo em disco"
+                       Foreground="#73737C"
+                       FontSize="11"/>
+            <TextBlock x:Name="MemoryCountText"
+                       Grid.Column="1"
+                       Foreground="#8F8F98"
+                       FontSize="11"/>
+        </Grid>
+    </Grid>
+</Window>
