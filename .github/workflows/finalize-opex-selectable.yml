@@ -1,0 +1,55 @@
+name: Finalize OPEX Context Fix
+
+on:
+  push:
+    branches:
+      - fix/opex-context-race-selectable-infos-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'Valida ajustes finais OPEX e Infos'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Apply final source patch
+        shell: pwsh
+        run: ./.github/scripts/finalize-opex-selectable.ps1
+      - name: Restore
+        run: dotnet restore HubFinanceiro.csproj
+      - name: Build
+        run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
+      - name: Verify context barrier
+        shell: pwsh
+        run: |
+          $dll = Join-Path $PWD 'bin\Debug\net8.0-windows\HubFinanceiro.dll'
+          $assembly = [System.Reflection.Assembly]::LoadFrom($dll)
+          $type = $assembly.GetType('HubFinanceiro.SantanderCommitmentMemoryService', $true)
+          $flags = [System.Reflection.BindingFlags]::Static -bor [System.Reflection.BindingFlags]::NonPublic
+          $method = $type.GetMethod('IsSafeSnapshotAfterContextSwitch', $flags)
+          if (-not $method) { throw 'Barreira OPEX nao encontrada.' }
+          $troca = [DateTime]::new(2026, 8, 26, 18, 15, 20, [DateTimeKind]::Local)
+          $old = '2|R$ 6.405,24|ADM'
+          $new = '0|R$ 0,00|COR'
+          function Test-B([DateTime]$captured, [string]$table, [bool]$empty) {
+            [bool]$method.Invoke($null, @($captured, $troca, $table, $old, $empty))
+          }
+          if (Test-B $troca.AddMilliseconds(-100) $old $false) { throw 'Snapshot anterior aceito.' }
+          if (Test-B $troca.AddSeconds(2) $old $false) { throw 'Tabela antiga aceita.' }
+          if (-not (Test-B $troca.AddSeconds(2) $old $true)) { throw 'Transicao vazia bloqueada.' }
+          if (-not (Test-B $troca.AddSeconds(2) $new $false)) { throw 'Tabela nova bloqueada.' }
+      - name: Commit final source
+        shell: pwsh
+        run: |
+          git add SantanderCommitmentMemoryService.cs InfosPositivaWindow.xaml
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git config user.name "Alexandre Mallorca"
+          git config user.email "99052118+AlexMalls@users.noreply.github.com"
+          git commit -m "Finaliza barreira de contexto OPEX e textos copiaveis"
+          git push
