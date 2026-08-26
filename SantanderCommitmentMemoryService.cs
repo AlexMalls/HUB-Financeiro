@@ -305,7 +305,7 @@ public static class SantanderCommitmentMemoryService
             {
                 var previousDisplay = string.IsNullOrWhiteSpace(previousContext)
                     ? "nenhum"
-                    : previousContext.Replace('|', ' — ');
+                    : previousContext.Replace("|", " — ");
 
                 DebugService.Record(
                     "SANTANDER",
@@ -460,9 +460,6 @@ public static class SantanderCommitmentMemoryService
         {
         }
 
-        // O nome da empresa fica no cabeçalho da tela. Entre os textos realmente
-        // visíveis escolhemos primeiro quem contém POSITIVA e, depois, o elemento
-        // mais alto na página. Isso evita usar o convênio anterior oculto no DOM.
         var company = candidates
             .Where(candidate => candidate.Text.Contains("POSITIVA", StringComparison.OrdinalIgnoreCase))
             .OrderBy(candidate => candidate.Top)
