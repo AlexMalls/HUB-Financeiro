@@ -31,13 +31,14 @@ public sealed record SantanderCommitmentMemoryEntry(
 /// Memória temporária dos últimos resultados efetivamente observados na tela
 /// Consultar compromissos. Nada é persistido em disco.
 ///
-/// A memória NÃO atualiza a cada sonda do Santander. Ela só grava quando a
-/// composição da tabela realmente muda. Assim, mexer no calendário sem carregar
-/// um novo resultado não associa pagamentos antigos a um período novo.
+/// A memória considera Banco + Empresa/Contexto + composição visível da tabela.
+/// Assim, trocar o convênio de Administradora para Corretora é reconhecido mesmo
+/// quando ambos os contextos exibem exatamente os mesmos pagamentos.
 /// </summary>
 public static class SantanderCommitmentMemoryService
 {
     private const int TickMilliseconds = 850;
+    private const int ContextProbeIntervalMilliseconds = 1600;
     private const int MaxPeriodsPerContext = 4;
     private const int MaxEntriesTotal = 12;
     private const string BankName = "Santander";
@@ -47,11 +48,23 @@ public static class SantanderCommitmentMemoryService
     private static readonly Dictionary<string, SantanderCommitmentMemoryEntry> Entries =
         new(StringComparer.OrdinalIgnoreCase);
 
+    private static readonly string[] CommitmentScreenNames =
+    {
+        "Consultar compromissos",
+        "Consultar Compromissos",
+        "Consulta de compromissos",
+        "Consulta de Compromissos"
+    };
+
     private static bool _initialized;
     private static bool _running;
     private static System.Threading.Timer? _timer;
-    private static string _lastObservedTableSignature = string.Empty;
+    private static string _lastSeenTableSignature = string.Empty;
+    private static string _lastStoredCompositeSignature = string.Empty;
+    private static string _lastDetectedContextKey = string.Empty;
+    private static DateTime _nextContextProbeUtc;
     private static bool _captureInProgress;
+    private static string _lastContextDiagnostic = string.Empty;
 
     public static event Action? MemoryChanged;
 
@@ -76,8 +89,8 @@ public static class SantanderCommitmentMemoryService
         lock (Sync)
         {
             return Entries.Values
-                .OrderBy(entry => entry.Banco, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(entry => entry.Contexto, StringComparer.CurrentCultureIgnoreCase)
+                .OrderByDescending(entry => ParseDate(entry.DataInicial) ?? DateTime.MinValue)
+                .ThenBy(entry => ContextSortOrder(entry.Contexto))
                 .ThenByDescending(entry => entry.AtualizadoEm)
                 .ToList();
         }
@@ -88,7 +101,10 @@ public static class SantanderCommitmentMemoryService
         lock (Sync)
         {
             Entries.Clear();
-            _lastObservedTableSignature = string.Empty;
+            _lastSeenTableSignature = string.Empty;
+            _lastStoredCompositeSignature = string.Empty;
+            _lastDetectedContextKey = string.Empty;
+            _nextContextProbeUtc = DateTime.MinValue;
         }
 
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => MemoryChanged?.Invoke()));
@@ -124,7 +140,11 @@ public static class SantanderCommitmentMemoryService
                 return;
 
             _running = true;
-            _lastObservedTableSignature = string.Empty;
+            _lastSeenTableSignature = string.Empty;
+            _lastStoredCompositeSignature = string.Empty;
+            _lastDetectedContextKey = string.Empty;
+            _lastContextDiagnostic = string.Empty;
+            _nextContextProbeUtc = DateTime.MinValue;
             _captureInProgress = false;
             _timer = new System.Threading.Timer(
                 Tick,
@@ -151,7 +171,10 @@ public static class SantanderCommitmentMemoryService
             timer = _timer;
             _timer = null;
             _captureInProgress = false;
-            _lastObservedTableSignature = string.Empty;
+            _lastSeenTableSignature = string.Empty;
+            _lastStoredCompositeSignature = string.Empty;
+            _lastDetectedContextKey = string.Empty;
+            _nextContextProbeUtc = DateTime.MinValue;
         }
 
         timer?.Dispose();
@@ -171,21 +194,28 @@ public static class SantanderCommitmentMemoryService
             if (!IsEffectiveResult(snapshot))
                 return;
 
+            var now = DateTime.UtcNow;
             var tableSignature = BuildTableSignature(snapshot!);
+            bool tableChanged;
+
             lock (Sync)
             {
-                if (string.Equals(tableSignature, _lastObservedTableSignature, StringComparison.Ordinal))
+                tableChanged = !string.Equals(tableSignature, _lastSeenTableSignature, StringComparison.Ordinal);
+                if (tableChanged)
+                    _lastSeenTableSignature = tableSignature;
+
+                // Se a tabela mudou, verificamos imediatamente. Se não mudou, fazemos
+                // apenas uma sonda contextual leve a cada ~1,6s enquanto a tela correta
+                // está ativa. Isso detecta Trocar Convênio sem consultar rede/banco.
+                if (!tableChanged && now < _nextContextProbeUtc)
                     return;
 
-                // A assinatura usada aqui NÃO inclui as datas dos inputs. Portanto,
-                // abrir o calendário ou simplesmente trocar o período não sobrescreve
-                // a memória enquanto a tabela antiga continuar sendo exibida.
-                _lastObservedTableSignature = tableSignature;
+                _nextContextProbeUtc = now.AddMilliseconds(ContextProbeIntervalMilliseconds);
                 _captureInProgress = true;
             }
 
             var frozenSnapshot = CloneSnapshot(snapshot!);
-            _ = Task.Run(() => CaptureContextAndStore(frozenSnapshot));
+            _ = Task.Run(() => CaptureContextAndStore(frozenSnapshot, tableSignature));
         }
         catch (Exception ex)
         {
@@ -207,8 +237,6 @@ public static class SantanderCommitmentMemoryService
         if (string.IsNullOrWhiteSpace(snapshot.DataInicial) || string.IsNullOrWhiteSpace(snapshot.DataFinal))
             return false;
 
-        // Total 0 é um resultado válido. Null + nenhuma linha significa que a tabela
-        // ainda não foi exposta/carregada e não deve virar memória.
         return snapshot.TotalPagamentos.HasValue || snapshot.Pagamentos.Count > 0;
     }
 
@@ -243,27 +271,94 @@ public static class SantanderCommitmentMemoryService
         return builder.ToString();
     }
 
-    private static void CaptureContextAndStore(SantanderCommitmentSnapshot snapshot)
+    private static void CaptureContextAndStore(SantanderCommitmentSnapshot snapshot, string tableSignature)
     {
         try
         {
-            var context = DetectCompanyContext();
-            Store(snapshot, context.Contexto, context.Empresa);
+            var detection = DetectCompanyContext();
+            if (!detection.OnCommitmentScreen)
+                return;
+
+            if (string.IsNullOrWhiteSpace(detection.Empresa) ||
+                string.Equals(detection.Contexto, "Não identificado", StringComparison.OrdinalIgnoreCase))
+            {
+                PublishContextDiagnosticOnce("Empresa/contexto ainda não foi exposto de forma visível; snapshot aguardará a próxima sonda.");
+                return;
+            }
+
+            var contextKey = $"{BankName}|{detection.Contexto}";
+            var contextChanged = false;
+            string previousContext;
+
+            lock (Sync)
+            {
+                previousContext = _lastDetectedContextKey;
+                if (!string.Equals(previousContext, contextKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastDetectedContextKey = contextKey;
+                    contextChanged = true;
+                }
+                _lastContextDiagnostic = string.Empty;
+            }
+
+            if (contextChanged)
+            {
+                var previousDisplay = string.IsNullOrWhiteSpace(previousContext)
+                    ? "nenhum"
+                    : previousContext.Replace('|', ' — ');
+
+                DebugService.Record(
+                    "SANTANDER",
+                    $"Contexto bancário detectado/alterado | {previousDisplay} → {BankName} — {detection.Contexto} | Empresa: {detection.Empresa}.",
+                    DebugEntryLevel.Action);
+            }
+
+            // A assinatura deliberadamente NÃO inclui o período dos inputs. Assim,
+            // mudar apenas o calendário sem carregar uma nova tabela continua sem
+            // sobrescrever a memória. O contexto, porém, faz parte da assinatura:
+            // a mesma tabela em Administradora e Corretora vira dois snapshots.
+            var compositeSignature = $"{contextKey}|{NormalizeWhitespace(detection.Empresa)}|{tableSignature}";
+
+            lock (Sync)
+            {
+                if (string.Equals(compositeSignature, _lastStoredCompositeSignature, StringComparison.Ordinal))
+                    return;
+
+                _lastStoredCompositeSignature = compositeSignature;
+            }
+
+            Store(snapshot, detection.Contexto, detection.Empresa);
         }
         catch (Exception ex)
         {
-            // Mesmo que o Edge não exponha o nome da empresa nessa leitura, não
-            // perdemos o resultado operacional: ele entra num contexto explícito.
-            Store(snapshot, "Não identificado", "Empresa não identificada");
-            DebugService.Record(
-                "SANTANDER",
-                $"Contexto da empresa não pôde ser identificado ({ex.GetType().Name}); snapshot mantido como 'Não identificado'.",
-                DebugEntryLevel.Warning);
+            PublishContextDiagnosticOnce(
+                $"Falha temporária ao identificar contexto ({ex.GetType().Name}); nenhum snapshot será classificado incorretamente.");
         }
         finally
         {
             lock (Sync)
                 _captureInProgress = false;
+        }
+    }
+
+    private static void PublishContextDiagnosticOnce(string message)
+    {
+        var shouldPublish = false;
+        lock (Sync)
+        {
+            if (!string.Equals(_lastContextDiagnostic, message, StringComparison.Ordinal))
+            {
+                _lastContextDiagnostic = message;
+                shouldPublish = true;
+            }
+        }
+
+        if (shouldPublish)
+        {
+            DebugService.Record(
+                "SANTANDER",
+                $"Memória contextual | {message}",
+                DebugEntryLevel.Background);
         }
     }
 
@@ -322,17 +417,20 @@ public static class SantanderCommitmentMemoryService
             Entries.Remove(obsolete.StorageKey);
     }
 
-    private static (string Contexto, string Empresa) DetectCompanyContext()
+    private static ContextDetection DetectCompanyContext()
     {
         var window = DetectSantanderWindow();
         if (window == null)
-            return ("Não identificado", "Empresa não identificada");
+            return ContextDetection.NotAvailable;
 
         var root = AutomationElement.FromHandle(window.Value.Handle);
         if (root == null)
-            return ("Não identificado", "Empresa não identificada");
+            return ContextDetection.NotAvailable;
 
-        var candidates = new List<string>();
+        if (!FindAnyExactName(root, CommitmentScreenNames))
+            return ContextDetection.NotAvailable;
+
+        var candidates = new List<CompanyCandidate>();
         try
         {
             var textNodes = root.FindAll(
@@ -341,32 +439,98 @@ public static class SantanderCommitmentMemoryService
 
             foreach (AutomationElement node in textNodes)
             {
-                var name = SafeName(node);
-                if (string.IsNullOrWhiteSpace(name) || name.Length > 160)
+                var name = NormalizeWhitespace(SafeName(node));
+                if (string.IsNullOrWhiteSpace(name) || name.Length > 180)
                     continue;
 
-                if (name.Contains("POSITIVA", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("ADMINISTRADORA", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("CORRETORA", StringComparison.OrdinalIgnoreCase))
+                if (!name.Contains("POSITIVA", StringComparison.OrdinalIgnoreCase) &&
+                    !name.Contains("ADMINISTRADORA", StringComparison.OrdinalIgnoreCase) &&
+                    !name.Contains("CORRETORA", StringComparison.OrdinalIgnoreCase))
                 {
-                    candidates.Add(NormalizeWhitespace(name));
+                    continue;
                 }
+
+                if (!TryGetVisibleRectangle(node, out var top, out var left))
+                    continue;
+
+                candidates.Add(new CompanyCandidate(name, top, left));
             }
         }
         catch (Exception ex) when (IsExpectedUiAutomationException(ex))
         {
         }
 
+        // O nome da empresa fica no cabeçalho da tela. Entre os textos realmente
+        // visíveis escolhemos primeiro quem contém POSITIVA e, depois, o elemento
+        // mais alto na página. Isso evita usar o convênio anterior oculto no DOM.
         var company = candidates
-            .Where(candidate => candidate.Contains("POSITIVA", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(ContextPriority)
-            .ThenByDescending(candidate => candidate.Length)
+            .Where(candidate => candidate.Text.Contains("POSITIVA", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(candidate => candidate.Top)
+            .ThenBy(candidate => candidate.Left)
+            .ThenByDescending(candidate => ContextPriority(candidate.Text))
+            .Select(candidate => candidate.Text)
             .FirstOrDefault();
 
-        company ??= candidates.OrderByDescending(ContextPriority).FirstOrDefault();
-        company ??= "Empresa não identificada";
+        company ??= candidates
+            .OrderBy(candidate => candidate.Top)
+            .ThenBy(candidate => candidate.Left)
+            .ThenByDescending(candidate => ContextPriority(candidate.Text))
+            .Select(candidate => candidate.Text)
+            .FirstOrDefault();
 
-        return (ClassifyContext(company), company);
+        if (string.IsNullOrWhiteSpace(company))
+            return new ContextDetection(true, "Não identificado", string.Empty);
+
+        return new ContextDetection(true, ClassifyContext(company), company);
+    }
+
+    private static bool FindAnyExactName(AutomationElement root, IEnumerable<string> names)
+    {
+        foreach (var name in names)
+        {
+            try
+            {
+                var found = root.FindFirst(
+                    TreeScope.Descendants,
+                    new PropertyCondition(
+                        AutomationElement.NameProperty,
+                        name,
+                        PropertyConditionFlags.IgnoreCase));
+
+                if (found != null)
+                    return true;
+            }
+            catch (Exception ex) when (IsExpectedUiAutomationException(ex))
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetVisibleRectangle(AutomationElement element, out double top, out double left)
+    {
+        top = double.MaxValue;
+        left = double.MaxValue;
+
+        try
+        {
+            if (element.Current.IsOffscreen)
+                return false;
+
+            var rect = element.Current.BoundingRectangle;
+            if (rect.IsEmpty || rect.Width <= 0 || rect.Height <= 0)
+                return false;
+
+            top = rect.Top;
+            left = rect.Left;
+            return true;
+        }
+        catch (Exception ex) when (IsExpectedUiAutomationException(ex))
+        {
+            return false;
+        }
     }
 
     private static int ContextPriority(string text)
@@ -382,16 +546,16 @@ public static class SantanderCommitmentMemoryService
 
     private static string ClassifyContext(string company)
     {
-        if (company.Contains("ADMINISTRADORA", StringComparison.OrdinalIgnoreCase) ||
-            company.Contains("BENEF", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Administradora";
-        }
-
         if (company.Contains("CORRETORA", StringComparison.OrdinalIgnoreCase) ||
             company.Contains("SEGUROS", StringComparison.OrdinalIgnoreCase))
         {
             return "Corretora";
+        }
+
+        if (company.Contains("ADMINISTRADORA", StringComparison.OrdinalIgnoreCase) ||
+            company.Contains("BENEF", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Administradora";
         }
 
         return "Não identificado";
@@ -469,8 +633,33 @@ public static class SantanderCommitmentMemoryService
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    private static DateTime? ParseDate(string value)
+    {
+        return DateTime.TryParseExact(
+            value,
+            "dd/MM/yyyy",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None,
+            out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private static int ContextSortOrder(string context)
+    {
+        if (context.Equals("Administradora", StringComparison.OrdinalIgnoreCase)) return 0;
+        if (context.Equals("Corretora", StringComparison.OrdinalIgnoreCase)) return 1;
+        return 2;
+    }
+
     private static bool IsExpectedUiAutomationException(Exception ex) =>
         ex is ElementNotAvailableException or InvalidOperationException or COMException;
+
+    private sealed record CompanyCandidate(string Text, double Top, double Left);
+    private sealed record ContextDetection(bool OnCommitmentScreen, string Contexto, string Empresa)
+    {
+        public static ContextDetection NotAvailable { get; } = new(false, "Não identificado", string.Empty);
+    }
 
     private readonly record struct WindowCandidate(IntPtr Handle, uint ProcessId);
 
