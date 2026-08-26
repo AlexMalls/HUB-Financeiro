@@ -18,6 +18,7 @@ public static class SantanderMonitorService
 {
     private const int PollIntervalMilliseconds = 750;
     private const int ContextScanIntervalMilliseconds = 3000;
+    private const int HeartbeatIntervalMilliseconds = 8000;
     private const int TransientUnavailableTolerance = 6;
     private const string EdgeProcessName = "msedge";
     private const string SantanderPwaAppId = "mmbkodmnnmlokekegikhdcpakjfahekf";
@@ -27,6 +28,17 @@ public static class SantanderMonitorService
     private static readonly Regex EspacosRepetidos = new(@"\s+", RegexOptions.Compiled);
     private static readonly (string Pattern, string CanonicalLabel)[] SafeNavigationLabels =
     {
+        ("detalhe do pagamento", "Detalhe do pagamento"),
+        ("dados do recebedor", "Dados do recebedor"),
+        ("dados do pagador", "Dados do pagador"),
+        ("dados do pagamento", "Dados do pagamento"),
+        ("filtros avançados", "Filtros avançados"),
+        ("filtros avancados", "Filtros avançados"),
+        ("salvar em pdf", "Salvar em PDF"),
+        ("enviar por e-mail", "Enviar por e-mail"),
+        ("enviar por email", "Enviar por e-mail"),
+        ("imprimir", "Imprimir"),
+        ("fechar", "Fechar"),
         ("consultar compromiss", "Consultar compromissos"),
         ("consulta de compromiss", "Consultar compromissos"),
         ("compromiss", "Compromissos"),
@@ -66,8 +78,9 @@ public static class SantanderMonitorService
     private static string _lastNavigationSignature = string.Empty;
     private static string _lastFocusSignature = string.Empty;
     private static DateTime _lastFocusLogUtc;
-    private static bool _focusHandlerRegistered;
-    private static AutomationFocusChangedEventHandler? _focusHandler;
+    private static DateTime _nextHeartbeatUtc;
+    private static int _lastNavigationCount;
+    private static bool _focusProbeFailureReported;
 
     public static void Initialize()
     {
@@ -107,10 +120,11 @@ public static class SantanderMonitorService
             _lastNavigationSignature = string.Empty;
             _lastFocusSignature = string.Empty;
             _lastFocusLogUtc = DateTime.MinValue;
+            _nextHeartbeatUtc = DateTime.UtcNow.AddMilliseconds(HeartbeatIntervalMilliseconds);
+            _lastNavigationCount = 0;
+            _focusProbeFailureReported = false;
             _timer = new Timer(Poll, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         }
-
-        RegisterFocusHandler();
 
         DebugService.Record(
             "SANTANDER",
@@ -133,10 +147,12 @@ public static class SantanderMonitorService
             _lastNavigationSignature = string.Empty;
             _lastFocusSignature = string.Empty;
             _lastFocusLogUtc = DateTime.MinValue;
+            _nextHeartbeatUtc = DateTime.MinValue;
+            _lastNavigationCount = 0;
+            _focusProbeFailureReported = false;
         }
 
         timer?.Dispose();
-        UnregisterFocusHandler();
     }
 
     private static void Application_Exit(object sender, ExitEventArgs e)
@@ -160,7 +176,9 @@ public static class SantanderMonitorService
         {
             var currentState = StabilizeTransientState(DetectCurrentState());
             PublishStateChange(currentState);
+            ScanFocusedElement();
             ScanSafeNavigationContext(currentState);
+            PublishHeartbeat(currentState);
             _lastDiagnosticError = null;
         }
         catch (Exception ex)
@@ -210,63 +228,9 @@ public static class SantanderMonitorService
         return observed;
     }
 
-    private static void RegisterFocusHandler()
+    private static void ScanFocusedElement()
     {
-        AutomationFocusChangedEventHandler handler;
-        lock (Sync)
-        {
-            if (_focusHandlerRegistered)
-                return;
-
-            handler = new AutomationFocusChangedEventHandler(OnAutomationFocusChanged);
-            _focusHandler = handler;
-        }
-
-        try
-        {
-            Automation.AddAutomationFocusChangedEventHandler(handler);
-            lock (Sync)
-                _focusHandlerRegistered = true;
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or COMException)
-        {
-            DebugService.Record(
-                "SANTANDER",
-                $"A captura de foco não pôde ser ativada ({ex.GetType().Name}); rotas e controles visíveis continuarão sendo monitorados.",
-                DebugEntryLevel.Warning);
-
-            lock (Sync)
-                _focusHandler = null;
-        }
-    }
-
-    private static void UnregisterFocusHandler()
-    {
-        AutomationFocusChangedEventHandler? handler;
-        lock (Sync)
-        {
-            if (!_focusHandlerRegistered)
-                return;
-
-            _focusHandlerRegistered = false;
-            handler = _focusHandler;
-            _focusHandler = null;
-        }
-
-        try
-        {
-            if (handler != null)
-                Automation.RemoveAutomationFocusChangedEventHandler(handler);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or COMException)
-        {
-            // Encerrar o HUB nunca pode falhar por causa do monitor.
-        }
-    }
-
-    private static void OnAutomationFocusChanged(object sender, AutomationFocusChangedEventArgs e)
-    {
-        if (!DebugService.IsEnabled || sender is not AutomationElement element)
+        if (!DebugService.IsEnabled)
             return;
 
         try
@@ -277,6 +241,10 @@ public static class SantanderMonitorService
 
             GetWindowThreadProcessId(foregroundWindow, out var processId);
             if (!IsEdgeProcess(processId))
+                return;
+
+            var element = AutomationElement.FocusedElement;
+            if (element == null)
                 return;
 
             var controlType = element.Current.ControlType;
@@ -307,7 +275,23 @@ public static class SantanderMonitorService
         }
         catch (Exception ex) when (ex is ElementNotAvailableException or InvalidOperationException or COMException)
         {
-            // O Edge recria elementos durante a navegação; o próximo evento será processado.
+            var shouldReport = false;
+            lock (Sync)
+            {
+                if (!_focusProbeFailureReported)
+                {
+                    _focusProbeFailureReported = true;
+                    shouldReport = true;
+                }
+            }
+
+            if (shouldReport)
+            {
+                DebugService.Record(
+                    "SANTANDER",
+                    $"A consulta direta do foco está temporariamente indisponível ({ex.GetType().Name}); a varredura de página permanece ativa.",
+                    DebugEntryLevel.Warning);
+            }
         }
     }
 
@@ -325,6 +309,9 @@ public static class SantanderMonitorService
         }
 
         var labels = TryReadSafeNavigationLabels(current.WindowHandle);
+        lock (Sync)
+            _lastNavigationCount = labels.Count;
+
         if (labels.Count == 0)
         {
             var emptySignature = $"SEM-CONTROLES:{current.Page}:{current.SafeUrl}";
@@ -358,6 +345,27 @@ public static class SantanderMonitorService
             DebugEntryLevel.Background);
     }
 
+    private static void PublishHeartbeat(MonitorState current)
+    {
+        if (!current.Detected)
+            return;
+
+        int navigationCount;
+        lock (Sync)
+        {
+            if (DateTime.UtcNow < _nextHeartbeatUtc)
+                return;
+
+            _nextHeartbeatUtc = DateTime.UtcNow.AddMilliseconds(HeartbeatIntervalMilliseconds);
+            navigationCount = _lastNavigationCount;
+        }
+
+        DebugService.Record(
+            "SANTANDER",
+            $"Monitor ativo | página: {current.Page} | controles seguros observados: {navigationCount} | próxima varredura em {PollIntervalMilliseconds}ms.",
+            DebugEntryLevel.System);
+    }
+
     private static IReadOnlyList<string> TryReadSafeNavigationLabels(IntPtr windowHandle)
     {
         try
@@ -368,7 +376,9 @@ public static class SantanderMonitorService
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Hyperlink),
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem),
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem),
-                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TreeItem));
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TreeItem),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Group));
 
             var elements = root.FindAll(TreeScope.Descendants, navigationCondition);
             var labels = new List<string>();
