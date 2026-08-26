@@ -1,0 +1,36 @@
+name: Validate Safe Reconciliation
+
+on:
+  push:
+    branches:
+      - feat/conferir-pagamentos-opex-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.event.head_commit.message == 'Dispara validacao segura da conferencia'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Apply matching patch
+        shell: pwsh
+        run: ./.github/scripts/harden-reconciliation.ps1
+      - name: Restore
+        run: dotnet restore HubFinanceiro.csproj
+      - name: Build
+        run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
+      - name: Reconciliation tests
+        run: dotnet run --project HubFinanceiro.csproj --configuration Debug --no-build -- --validar-conferencia-pagamentos
+      - name: Commit validated matching
+        shell: pwsh
+        run: |
+          git add OpexPaymentReconciliationService.cs OpexPaymentReconciliationServiceTestes.cs
+          git config user.name "Alexandre Mallorca"
+          git config user.email "99052118+AlexMalls@users.noreply.github.com"
+          git commit -m "Evita pareamento por valor sem identidade"
+          git push
