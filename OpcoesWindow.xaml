@@ -264,7 +264,7 @@
                                         Click="OpenDebugLogsButton_Click"/>
                             </StackPanel>
 
-                            <TextBlock Text="Campos operacionais podem mostrar valor anterior → novo. Dados bancários e credenciais sensíveis são omitidos. O log mantém as 10.000 linhas mais recentes."
+                            <TextBlock Text="Campos operacionais podem mostrar valor anterior → novo. Em Consultar compromissos, o Debug também pode registrar datas, favorecidos, números de pagamento/cliente, valores, tipo, situação e canal para futura conciliação. Credenciais, conta, agência, convênio e documentos bancários permanecem omitidos. O log mantém as 10.000 linhas mais recentes."
                                        Foreground="{DynamicResource TextColor}"
                                        FontSize="11"
                                        Opacity="0.45"
