@@ -19,12 +19,25 @@
         <SolidColorBrush x:Key="Accent" Color="#7920DC"/>
         <SolidColorBrush x:Key="Green" Color="#55D98A"/>
         <SolidColorBrush x:Key="Amber" Color="#F2B84B"/>
-        <Style x:Key="SectionLabel" TargetType="TextBlock">
+        <Style x:Key="SelectableText" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="IsReadOnlyCaretVisible" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Cursor" Value="IBeam"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SelectionBrush" Value="#6E3AA4"/>
+            <Setter Property="SelectionOpacity" Value="0.75"/>
+        </Style>
+        <Style x:Key="SectionLabel" TargetType="TextBox" BasedOn="{StaticResource SelectableText}">
             <Setter Property="Foreground" Value="#8F8F98"/>
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
-        <Style x:Key="CardTitle" TargetType="TextBlock">
+        <Style x:Key="CardTitle" TargetType="TextBox" BasedOn="{StaticResource SelectableText}">
             <Setter Property="FontSize" Value="17"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="White"/>
@@ -57,8 +70,8 @@
                             <TextBlock Text="" FontFamily="Segoe MDL2 Assets" Foreground="#B66BFF" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel>
-                            <TextBlock Text="Infos Positiva" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="Consulta rápida corporativa e bancária" Foreground="#8F8F98" FontSize="10" Margin="0,2,0,0"/>
+                            <TextBox Style="{StaticResource SelectableText}" Text="Infos Positiva" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBox Style="{StaticResource SelectableText}" Text="Consulta rápida corporativa e bancária" Foreground="#8F8F98" FontSize="10" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
                     <Button Grid.Column="1"
@@ -77,8 +90,8 @@
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="22,20,22,24">
                     <StackPanel Margin="2,0,2,17">
-                        <TextBlock Text="Informações essenciais" FontSize="23" FontWeight="SemiBold"/>
-                        <TextBlock Text="Dados de referência para o dia a dia financeiro da Positiva."
+                        <TextBox Style="{StaticResource SelectableText}" Text="Informações essenciais" FontSize="23" FontWeight="SemiBold"/>
+                        <TextBox Style="{StaticResource SelectableText}" Text="Dados de referência para o dia a dia financeiro da Positiva."
                                    Foreground="#9B9BA3" FontSize="12" Margin="0,5,0,0"/>
                     </StackPanel>
 
@@ -93,11 +106,11 @@
                                 <TextBlock Text="" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource Green}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="PIX" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock Text="Condição válida para Administradora e Corretora" Foreground="#9BB5A6" FontSize="10" Margin="0,2,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="PIX" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Condição válida para Administradora e Corretora" Foreground="#9BB5A6" FontSize="10" Margin="0,2,0,0"/>
                             </StackPanel>
                             <Border Grid.Column="2" Background="#254332" CornerRadius="13" Padding="12,5" VerticalAlignment="Center">
-                                <TextBlock Text="Tarifa isenta" Foreground="{StaticResource Green}" FontWeight="SemiBold" FontSize="11"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Tarifa isenta" Foreground="{StaticResource Green}" FontWeight="SemiBold" FontSize="11"/>
                             </Border>
                         </Grid>
                     </Border>
@@ -114,37 +127,37 @@
                                 <Grid Margin="0,0,0,15">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="ADMINISTRADORA" Foreground="#B66BFF" FontSize="10" FontWeight="Bold"/>
-                                        <TextBlock Text="Positiva Administradora de Benefícios Ltda" Style="{StaticResource CardTitle}" TextWrapping="Wrap" Margin="0,5,8,0"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="ADMINISTRADORA" Foreground="#B66BFF" FontSize="10" FontWeight="Bold"/>
+                                        <TextBox Text="Positiva Administradora de Benefícios Ltda" Style="{StaticResource CardTitle}" TextWrapping="Wrap" Margin="0,5,8,0"/>
                                     </StackPanel>
                                     <Border Grid.Column="1" Background="#2B1741" CornerRadius="8" Padding="8,5" VerticalAlignment="Top">
-                                        <TextBlock Text="ADM" Foreground="#C996FF" FontSize="10" FontWeight="Bold"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="ADM" Foreground="#C996FF" FontSize="10" FontWeight="Bold"/>
                                     </Border>
                                 </Grid>
 
-                                <TextBlock Text="CNPJ" Style="{StaticResource SectionLabel}"/>
-                                <TextBlock Text="25.006.061/0001-97" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                                <TextBlock Text="25006061000197" Foreground="#7F7F88" FontFamily="Consolas" FontSize="10" Margin="0,2,0,13"/>
+                                <TextBox Text="CNPJ" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="25.006.061/0001-97" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="25006061000197" Foreground="#7F7F88" FontFamily="Consolas" FontSize="10" Margin="0,2,0,13"/>
 
                                 <Border Height="1" Background="#333339" Margin="0,0,0,13"/>
 
-                                <TextBlock Text="BANCO" Style="{StaticResource SectionLabel}"/>
-                                <TextBlock Text="Santander  •  código 033" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                                <TextBlock Text="Convênio 0033-3409-004902845301" Foreground="#9B9BA3" FontSize="10" Margin="0,3,0,14"/>
+                                <TextBox Text="BANCO" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Santander  •  código 033" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Convênio 0033-3409-004902845301" Foreground="#9B9BA3" FontSize="10" Margin="0,3,0,14"/>
 
-                                <TextBlock Text="TARIFAS E SERVIÇOS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
-                                <TextBlock Text="• Emissão de boleto  —  R$ 0,99 por boleto" FontSize="11" Margin="0,0,0,6"/>
-                                <TextBlock Text="• Liquidação de boleto  —  Isenta" FontSize="11" Margin="0,0,0,6"/>
-                                <TextBlock Text="• Baixa de boleto  —  Isenta" FontSize="11" Margin="0,0,0,6"/>
-                                <TextBlock Text="• Manutenção de título vencido  —  R$ 1,85 por título" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                                <TextBlock Text="• Débito automático  —  R$ 3,35" FontSize="11" Margin="0,0,0,6"/>
-                                <TextBlock Text="• PIX no corpo do boleto  —  disponível para ativação" FontSize="11" TextWrapping="Wrap"/>
+                                <TextBox Text="TARIFAS E SERVIÇOS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• Emissão de boleto  —  R$ 0,99 por boleto" FontSize="11" Margin="0,0,0,6"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• Liquidação de boleto  —  Isenta" FontSize="11" Margin="0,0,0,6"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• Baixa de boleto  —  Isenta" FontSize="11" Margin="0,0,0,6"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• Manutenção de título vencido  —  R$ 1,85 por título" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• Débito automático  —  R$ 3,35" FontSize="11" Margin="0,0,0,6"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• PIX no corpo do boleto  —  disponível para ativação" FontSize="11" TextWrapping="Wrap"/>
 
                                 <Border Background="#332B1E" BorderBrush="#55472C" BorderThickness="1" CornerRadius="8" Padding="11" Margin="0,15,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="SUPERFOLHAONLINE" Foreground="{StaticResource Amber}" FontSize="9" FontWeight="Bold"/>
-                                        <TextBlock Text="Implementação sem custo" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,0"/>
-                                        <TextBlock Text="Ainda não implantado" Foreground="#D1B77C" FontSize="10" Margin="0,2,0,0"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="SUPERFOLHAONLINE" Foreground="{StaticResource Amber}" FontSize="9" FontWeight="Bold"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="Implementação sem custo" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,0"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="Ainda não implantado" Foreground="#D1B77C" FontSize="10" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -155,53 +168,53 @@
                                 <Grid Margin="0,0,0,15">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="CORRETORA" Foreground="#72B7FF" FontSize="10" FontWeight="Bold"/>
-                                        <TextBlock Text="Positiva Corretora de Seguros Ltda" Style="{StaticResource CardTitle}" TextWrapping="Wrap" Margin="0,5,8,0"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="CORRETORA" Foreground="#72B7FF" FontSize="10" FontWeight="Bold"/>
+                                        <TextBox Text="Positiva Corretora de Seguros Ltda" Style="{StaticResource CardTitle}" TextWrapping="Wrap" Margin="0,5,8,0"/>
                                     </StackPanel>
                                     <Border Grid.Column="1" Background="#172C41" CornerRadius="8" Padding="8,5" VerticalAlignment="Top">
-                                        <TextBlock Text="COR" Foreground="#86C2FF" FontSize="10" FontWeight="Bold"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="COR" Foreground="#86C2FF" FontSize="10" FontWeight="Bold"/>
                                     </Border>
                                 </Grid>
 
-                                <TextBlock Text="CNPJ" Style="{StaticResource SectionLabel}"/>
-                                <TextBlock Text="28.929.873/0001-00" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                                <TextBlock Text="28929873000100" Foreground="#7F7F88" FontFamily="Consolas" FontSize="10" Margin="0,2,0,13"/>
+                                <TextBox Text="CNPJ" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="28.929.873/0001-00" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="28929873000100" Foreground="#7F7F88" FontFamily="Consolas" FontSize="10" Margin="0,2,0,13"/>
 
                                 <Border Height="1" Background="#333339" Margin="0,0,0,13"/>
 
-                                <TextBlock Text="BANCO" Style="{StaticResource SectionLabel}"/>
-                                <TextBlock Text="Santander  •  código 033" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                                <TextBlock Text="Convênio 0033-4268-004905078983" Foreground="#9B9BA3" FontSize="10" Margin="0,3,0,14"/>
+                                <TextBox Text="BANCO" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Santander  •  código 033" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Convênio 0033-4268-004905078983" Foreground="#9B9BA3" FontSize="10" Margin="0,3,0,14"/>
 
-                                <TextBlock Text="CONDIÇÕES" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
-                                <TextBlock Text="• Tarifa de PIX  —  Isenta" FontSize="11"/>
-                                <TextBlock Text="As demais tarifas listadas para boletos e débito automático são condições específicas da Administradora."
+                                <TextBox Text="CONDIÇÕES" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="• Tarifa de PIX  —  Isenta" FontSize="11"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="As demais tarifas listadas para boletos e débito automático são condições específicas da Administradora."
                                            Foreground="#8F8F98" FontSize="10" TextWrapping="Wrap" Margin="0,9,0,0"/>
 
                                 <Border Background="#1C2923" BorderBrush="#315441" BorderThickness="1" CornerRadius="8" Padding="11" Margin="0,15,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="SUPERFOLHAONLINE" Foreground="{StaticResource Green}" FontSize="9" FontWeight="Bold"/>
-                                        <TextBlock Text="Implantado" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,0"/>
-                                        <TextBlock Text="Operação disponível na Corretora" Foreground="#9BB5A6" FontSize="10" Margin="0,2,0,0"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="SUPERFOLHAONLINE" Foreground="{StaticResource Green}" FontSize="9" FontWeight="Bold"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="Implantado" FontWeight="SemiBold" FontSize="11" Margin="0,4,0,0"/>
+                                        <TextBox Style="{StaticResource SelectableText}" Text="Operação disponível na Corretora" Foreground="#9BB5A6" FontSize="10" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <TextBlock Text="ENDEREÇOS" Style="{StaticResource SectionLabel}" Margin="2,19,0,9"/>
+                    <TextBox Text="ENDEREÇOS" Style="{StaticResource SectionLabel}" Margin="2,19,0,9"/>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Background="{StaticResource SurfaceAlt}" CornerRadius="9" Padding="14">
                             <StackPanel>
-                                <TextBlock Text="Rio de Janeiro" FontSize="12" FontWeight="SemiBold"/>
-                                <TextBlock Text="Rua Debret, 79 – Centro – Rio de Janeiro/RJ – CEP 20030-080" Foreground="#A5A5AD" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Rio de Janeiro" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Rua Debret, 79 – Centro – Rio de Janeiro/RJ – CEP 20030-080" Foreground="#A5A5AD" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0"/>
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="2" Background="{StaticResource SurfaceAlt}" CornerRadius="9" Padding="14">
                             <StackPanel>
-                                <TextBlock Text="São Paulo" FontSize="12" FontWeight="SemiBold"/>
-                                <TextBlock Text="Alameda Campinas, 457 – Jardim Paulista – São Paulo/SP – CEP 01404-100" Foreground="#A5A5AD" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="São Paulo" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBox Style="{StaticResource SelectableText}" Text="Alameda Campinas, 457 – Jardim Paulista – São Paulo/SP – CEP 01404-100" Foreground="#A5A5AD" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0"/>
                             </StackPanel>
                         </Border>
                     </Grid>
