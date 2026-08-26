@@ -95,14 +95,14 @@ public static class SantanderCommitmentMemoryService
                 return;
 
             _initialized = true;
-            DebugService.EnabledChanged += DebugService_EnabledChanged;
             Application.Current.Exit += Application_Exit;
         }
 
         LoadPersistedEntries();
 
-        if (DebugService.IsEnabled)
-            Start();
+        // A memória de compromissos alimenta a conferência O.P.E.X. e não é mais
+        // condicionada ao Modo Debug.
+        Start();
     }
 
     public static IReadOnlyList<SantanderCommitmentMemoryEntry> Snapshot()
@@ -141,19 +141,9 @@ public static class SantanderCommitmentMemoryService
             DebugEntryLevel.System);
     }
 
-    private static void DebugService_EnabledChanged(bool enabled)
-    {
-        if (enabled)
-            Start();
-        else
-            StopMonitoring();
-    }
-
     private static void Application_Exit(object sender, ExitEventArgs e)
     {
         StopMonitoring();
-
-        DebugService.EnabledChanged -= DebugService_EnabledChanged;
         Application.Current.Exit -= Application_Exit;
     }
 

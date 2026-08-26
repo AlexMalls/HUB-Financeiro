@@ -1,0 +1,276 @@
+<Window x:Class="HubFinanceiro.ConferirPagamentosWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Conferir Pagamentos"
+        Width="980"
+        Height="680"
+        MinWidth="820"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Foreground="White">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Bg" Color="#171719"/>
+        <SolidColorBrush x:Key="Surface" Color="#222226"/>
+        <SolidColorBrush x:Key="SurfaceAlt" Color="#2A2A2F"/>
+        <SolidColorBrush x:Key="Border" Color="#3B3B42"/>
+        <SolidColorBrush x:Key="Primary" Color="#7920DC"/>
+        <SolidColorBrush x:Key="PrimaryHover" Color="#5E17AA"/>
+
+        <Style x:Key="SelectableText" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="IsReadOnlyCaretVisible" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Cursor" Value="IBeam"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SelectionBrush" Value="#6E3AA4"/>
+            <Setter Property="SelectionOpacity" Value="0.75"/>
+        </Style>
+
+        <Style x:Key="CloseButton" TargetType="Button">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#BEBEC6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#3A2428"/>
+                                <Setter Property="Foreground" Value="#FF8D8D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="Padding" Value="18,0"/>
+            <Setter Property="Background" Value="{StaticResource Primary}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource PrimaryHover}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource Bg}"
+            BorderBrush="#46464E"
+            BorderThickness="1"
+            CornerRadius="14">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    Background="#1D1D21"
+                    BorderBrush="#303036"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="14,14,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="18,0,10,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="31" Height="31" CornerRadius="8" Background="#2D1746" Margin="0,0,11,0">
+                            <TextBlock Text="✓" Foreground="#C88CFF" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel>
+                            <TextBlock Text="Conferir Pagamentos" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="HeaderDateTextBlock" Foreground="#93939C" FontSize="10" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="✕" Style="{StaticResource CloseButton}" Click="Close_Click"/>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="22,18,22,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="9" Padding="14,11">
+                        <StackPanel>
+                            <TextBlock Text="NO BANCO NO HUB" Foreground="#94949D" FontSize="9" FontWeight="Bold"/>
+                            <TextBlock x:Name="HubNoBancoCountTextBlock" FontSize="22" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBlock Text="lançamentos que precisam existir no Santander" Foreground="#8D8D96" FontSize="10" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="9" Padding="14,11">
+                        <StackPanel>
+                            <TextBlock Text="SANTANDER" Foreground="#94949D" FontSize="9" FontWeight="Bold"/>
+                            <TextBlock x:Name="BankCountTextBlock" FontSize="22" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBlock Text="pagamentos encontrados no banco para o dia" Foreground="#8D8D96" FontSize="10" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="4" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="9" Padding="14,11">
+                        <StackPanel>
+                            <TextBlock Text="DIVERGÊNCIAS" Foreground="#94949D" FontSize="9" FontWeight="Bold"/>
+                            <TextBlock x:Name="IssueCountTextBlock" FontSize="22" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="IssueSummaryTextBlock" Foreground="#8D8D96" FontSize="10" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="1"
+                        Background="#1E1E22"
+                        BorderBrush="#34343A"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,9"
+                        Margin="0,12,0,0">
+                    <TextBox x:Name="CoverageTextBox"
+                             Style="{StaticResource SelectableText}"
+                             Foreground="#AFAFB8"
+                             FontSize="10"/>
+                </Border>
+
+                <Grid Grid.Row="3">
+                    <Border x:Name="SuccessPanel"
+                            Visibility="Collapsed"
+                            Background="#19271F"
+                            BorderBrush="#315843"
+                            BorderThickness="1"
+                            CornerRadius="11"
+                            Padding="28">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="560">
+                            <Border Width="54" Height="54" CornerRadius="27" Background="#244431" HorizontalAlignment="Center">
+                                <TextBlock Text="✓" Foreground="#62E394" FontSize="27" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Pagamentos conferidos" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,15,0,0"/>
+                            <TextBlock x:Name="SuccessTextBlock"
+                                       Foreground="#A8C4B2"
+                                       FontSize="11"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="IssuesPanel"
+                            Background="#1B1B1E"
+                            BorderBrush="#303036"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10">
+                            <ItemsControl x:Name="IssuesItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource Surface}"
+                                                BorderBrush="{Binding AccentBrush}"
+                                                BorderThickness="3,1,1,1"
+                                                CornerRadius="8"
+                                                Padding="13,11"
+                                                Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                    <Border Background="{Binding BadgeBackground}" CornerRadius="5" Padding="7,4">
+                                                        <TextBlock Text="{Binding Empresa}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding DirectionLabel}"
+                                                               Foreground="#787882"
+                                                               FontSize="8"
+                                                               FontWeight="Bold"
+                                                               HorizontalAlignment="Center"
+                                                               Margin="0,5,0,0"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Titulo}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                    <TextBox Text="{Binding Descricao}"
+                                                             Style="{StaticResource SelectableText}"
+                                                             Foreground="#9F9FA8"
+                                                             FontSize="10"
+                                                             Margin="0,4,0,0"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding ValorTexto}"
+                                                           Foreground="{Binding AccentBrush}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"
+                                                           Margin="14,0,2,0"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <Grid Grid.Row="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="FooterHintTextBlock"
+                               Foreground="#74747D"
+                               FontSize="9"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="2,0,15,0"/>
+                    <Button Grid.Column="1" Content="Fechar" Style="{StaticResource PrimaryButton}" Click="Close_Click"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

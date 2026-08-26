@@ -117,7 +117,8 @@
                     CornerRadius="15,15,0,0"
                     MouseLeftButtonDown="TopBar_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="Selecionar Data de Provisionamento"
+                    <TextBlock x:Name="TitleTextBlock"
+                              Text="Selecionar Data de Provisionamento"
                               Foreground="{StaticResource TextColor}"
                               FontSize="13"
                               FontWeight="SemiBold"
@@ -136,7 +137,8 @@
                        Margin="30"
                        VerticalAlignment="Center">
                 
-                <TextBlock Text="Para qual data deseja provisionar os pagamentos?"
+                <TextBlock x:Name="PromptTextBlock"
+                          Text="Para qual data deseja provisionar os pagamentos?"
                           Foreground="{StaticResource TextColor}"
                           FontSize="14"
                           Margin="0,0,0,20"
@@ -182,7 +184,8 @@
                             Click="Cancelar_Click"
                             Style="{StaticResource SecondaryButtonStyle}"/>
                     
-                    <Button Grid.Column="2"
+                    <Button x:Name="ActionButton"
+                            Grid.Column="2"
                             Content="Provisionar"
                             Height="40"
                             Click="Provisionar_Click"

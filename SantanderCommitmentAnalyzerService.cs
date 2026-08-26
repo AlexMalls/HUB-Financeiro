@@ -137,26 +137,17 @@ public static class SantanderCommitmentAnalyzerService
                 return;
 
             _initialized = true;
-            DebugService.EnabledChanged += DebugService_EnabledChanged;
             Application.Current.Exit += Application_Exit;
         }
 
-        if (DebugService.IsEnabled)
-            Start();
-    }
-
-    private static void DebugService_EnabledChanged(bool enabled)
-    {
-        if (enabled)
-            Start();
-        else
-            Stop();
+        // A leitura dos compromissos agora é infraestrutura operacional do O.P.E.X.,
+        // portanto permanece ativa independentemente do Modo Debug.
+        Start();
     }
 
     private static void Application_Exit(object sender, ExitEventArgs e)
     {
         Stop();
-        DebugService.EnabledChanged -= DebugService_EnabledChanged;
         Application.Current.Exit -= Application_Exit;
     }
 
