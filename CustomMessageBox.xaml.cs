@@ -33,7 +33,14 @@ public partial class CustomMessageBox : Window
 {
     public MessageBoxResult Result { get; private set; }
 
-    private CustomMessageBox(string message, string title, MessageBoxType type, bool showYesNo, string? detail = null)
+    private CustomMessageBox(
+        string message,
+        string title,
+        MessageBoxType type,
+        bool showYesNo,
+        string? detail = null,
+        string yesText = "Sim",
+        string noText = "Não")
     {
         InitializeComponent();
         
@@ -56,6 +63,8 @@ public partial class CustomMessageBox : Window
         // Configura os botões
         if (showYesNo)
         {
+            YesButton.Content = yesText;
+            NoButton.Content = noText;
             YesButton.Visibility = Visibility.Visible;
             NoButton.Visibility = Visibility.Visible;
             OkButton.Visibility = Visibility.Collapsed;
@@ -173,9 +182,14 @@ public partial class CustomMessageBox : Window
     /// <summary>
     /// Mostra uma pergunta com Sim/Não
     /// </summary>
-    public static MessageBoxResult ShowQuestion(string message, string title = "Confirmação", string? detail = null)
+    public static MessageBoxResult ShowQuestion(
+        string message,
+        string title = "Confirmação",
+        string? detail = null,
+        string yesText = "Sim",
+        string noText = "Não")
     {
-        var msgBox = new CustomMessageBox(message, title, MessageBoxType.Question, true, detail);
+        var msgBox = new CustomMessageBox(message, title, MessageBoxType.Question, true, detail, yesText, noText);
         
         var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
         if (activeWindow != null)

@@ -2631,6 +2631,8 @@
                                         <ColumnDefinition Width="135"/>  <!-- Botão Movimentar -->
                                         <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
                                         <ColumnDefinition Width="135"/>  <!-- Botão Importar -->
+                                        <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
+                                        <ColumnDefinition Width="155"/>  <!-- Conferir Pagamentos -->
                                     </Grid.ColumnDefinitions>
                                     
                                     <!-- Box de Data - TextBox com Formatação Automática -->
@@ -3038,6 +3040,41 @@
                                                 <Style.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
                                                         <Setter Property="Background" Value="{StaticResource PrimaryHoverColor}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <!-- Botão Conferir Pagamentos -->
+                                    <Button x:Name="BtnConferirPagamentos"
+                                            Grid.Column="14"
+                                            Content="Conferir Pagamentos"
+                                            Height="38"
+                                            Background="#2D6D50"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            FontWeight="SemiBold"
+                                            FontSize="13"
+                                            Cursor="Hand"
+                                            Click="BtnConferirPagamentos_Click">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#2D6D50"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                   CornerRadius="6"
+                                                                   BorderThickness="0">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                 VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#388563"/>
                                                     </Trigger>
                                                 </Style.Triggers>
                                             </Style>

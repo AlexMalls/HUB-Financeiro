@@ -11,15 +11,50 @@ public partial class SelecionarDataWindow : Window
     public DateTime DataSelecionada { get; private set; }
     private int _cursorPosition = 0;
     private bool _isFormattingDate = false; // Flag para evitar recursão
+    private readonly bool _confirmarFimSemana;
+    private readonly bool _confirmarPassado;
 
     public SelecionarDataWindow()
     {
         InitializeComponent();
-        
-        // Define a data sugerida (próximo dia útil)
+        _confirmarFimSemana = true;
+        _confirmarPassado = true;
+
+        // Mantém exatamente o comportamento histórico do provisionamento.
         DateTime dataSugerida = ObterProximoDiaUtil(DateTime.Now);
+        ConfigurarModo(
+            dataSugerida,
+            "Selecionar Data de Provisionamento",
+            "Para qual data deseja provisionar os pagamentos?",
+            "Provisionar");
+    }
+
+    public SelecionarDataWindow(
+        DateTime dataSugerida,
+        string tituloJanela,
+        string textoPergunta,
+        string textoAcao,
+        bool confirmarFimSemana = false,
+        bool confirmarPassado = false)
+    {
+        InitializeComponent();
+        _confirmarFimSemana = confirmarFimSemana;
+        _confirmarPassado = confirmarPassado;
+        ConfigurarModo(dataSugerida, tituloJanela, textoPergunta, textoAcao);
+    }
+
+    private void ConfigurarModo(
+        DateTime dataSugerida,
+        string tituloJanela,
+        string textoPergunta,
+        string textoAcao)
+    {
+        Title = tituloJanela;
+        TitleTextBlock.Text = tituloJanela;
+        PromptTextBlock.Text = textoPergunta;
+        ActionButton.Content = textoAcao;
         DataTextBox.Text = dataSugerida.ToString("dd/MM/yyyy");
-        DataSelecionada = dataSugerida;
+        DataSelecionada = dataSugerida.Date;
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
@@ -189,7 +224,9 @@ public partial class SelecionarDataWindow : Window
                 out DateTime data))
             {
                 // Verifica se é fim de semana
-                if (data.DayOfWeek == DayOfWeek.Saturday || data.DayOfWeek == DayOfWeek.Sunday)
+                if (_confirmarFimSemana &&
+                    (data.DayOfWeek == DayOfWeek.Saturday ||
+                     data.DayOfWeek == DayOfWeek.Sunday))
                 {
                     var result = CustomMessageBox.ShowQuestion(
                         "A data selecionada é um fim de semana. Deseja prosseguir mesmo assim?",
@@ -201,7 +238,7 @@ public partial class SelecionarDataWindow : Window
                 }
 
                 // Verifica se a data é no passado
-                if (data.Date < DateTime.Now.Date)
+                if (_confirmarPassado && data.Date < DateTime.Now.Date)
                 {
                     var result = CustomMessageBox.ShowQuestion(
                         "A data selecionada é no passado. Deseja prosseguir mesmo assim?",
