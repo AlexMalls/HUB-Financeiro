@@ -29,6 +29,8 @@ public class Program
         DebugSemanticService.Initialize();
         SantanderMonitorContinuoService.Initialize();
         SantanderCommitmentAnalyzerService.Initialize();
+        SantanderCommitmentMemoryService.Initialize();
+        OpexDebugInspectorService.Initialize();
         app.Run();
     }
 }
