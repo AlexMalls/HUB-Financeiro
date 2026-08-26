@@ -60,8 +60,7 @@
                     <TextBlock Text="ENNOIA"
                                HorizontalAlignment="Center"
                                FontSize="25"
-                               FontWeight="SemiBold"
-                               CharacterSpacing="180"/>
+                               FontWeight="SemiBold"/>
                     <TextBlock Text="HUB Financeiro"
                                HorizontalAlignment="Center"
                                Foreground="#B66BFF"
