@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   patch-build:
-    if: github.event.head_commit.message == 'Aplica e valida correção do nome da empresa por convênio'
+    if: github.event.head_commit.message == 'Corrige workflow de patch de empresa por convênio'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,48 +29,54 @@ jobs:
           s = path.read_text(encoding='utf-8')
 
           old_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
-              private const string CorretoraConvenio = "0033-4268-004905078983";'''.replace('              ', '    ')
+          private const string CorretoraConvenio = "0033-4268-004905078983";'''
           new_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
-              private const string CorretoraConvenio = "0033-4268-004905078983";
-              private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";
-              private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'''.replace('              ', '    ')
+          private const string CorretoraConvenio = "0033-4268-004905078983";
+          private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";
+          private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'''
           if old_constants not in s:
               raise SystemExit('constants target not found')
           s = s.replace(old_constants, new_constants, 1)
 
-          old_company = '''            var company = string.IsNullOrWhiteSpace(detection.Empresa)
-              ? "Empresa não identificada"
-              : detection.Empresa;'''.replace('              ', '                ')
-          new_company = '''            // O convênio já é a fonte de verdade do contexto; o nome exibido da
-              // empresa segue a mesma origem para impedir resíduos da árvore do Edge.
-              var company = CanonicalCompanyNameFromConvenio(detection.Convenio);'''.replace('              ', '            ')
-          if old_company not in s:
-              raise SystemExit('capture company target not found')
-          s = s.replace(old_company, new_company, 1)
+          detect_pattern = re.compile(
+              r'    private static ContextDetection DetectCompanyContext\(\)\n    \{.*?\n    \}\n\n(?=    private static bool FindAnyExactName)',
+              re.S)
+          detect_replacement = '''    private static ContextDetection DetectCompanyContext()
+          {
+              var window = DetectSantanderWindow();
+              if (window == null)
+                  return ContextDetection.NotAvailable;
 
-          start = s.index('        var candidates = new List<CompanyCandidate>();', s.index('private static ContextDetection DetectCompanyContext'))
-          end_marker = '''        return new ContextDetection(
-              true,
-              context,
-              company ?? string.Empty,
-              convenio);'''.replace('              ', '            ')
-          end = s.index(end_marker, start) + len(end_marker)
-          replacement = '''        // Empresa também é determinada pelo convênio. Não dependemos mais do
-          // texto de empresa exposto pela árvore de acessibilidade, que pode manter
-          // nós residuais do convênio anterior após Trocar Convênio.
-          var company = CanonicalCompanyNameFromConvenio(convenio);
+              var root = AutomationElement.FromHandle(window.Value.Handle);
+              if (root == null)
+                  return ContextDetection.NotAvailable;
 
-          return new ContextDetection(
-              true,
-              context,
-              company,
-              convenio);'''
-          s = s[:start] + replacement + s[end:]
+              if (!FindAnyExactName(root, CommitmentScreenNames))
+                  return ContextDetection.NotAvailable;
+
+              // Convênio é a fonte de verdade tanto para o contexto quanto para o
+              // nome da empresa. A árvore do Edge pode manter textos residuais do
+              // convênio anterior após Trocar Convênio, então não usamos esses textos.
+              var convenio = FindVisibleKnownConvenio(root);
+              var context = ClassifyContextFromConvenio(convenio);
+              var company = CanonicalCompanyNameFromConvenio(convenio);
+
+              return new ContextDetection(
+                  true,
+                  context,
+                  company,
+                  convenio);
+          }
+
+          '''
+          s, count = detect_pattern.subn(detect_replacement, s, count=1)
+          if count != 1:
+              raise SystemExit('DetectCompanyContext patch failed')
 
           marker = '    private static string ClassifyContextFromConvenio(string convenio)\n'
           if marker not in s:
               raise SystemExit('classify marker not found')
-          method = '''    private static string CanonicalCompanyNameFromConvenio(string convenio)
+          canonical_method = '''    private static string CanonicalCompanyNameFromConvenio(string convenio)
           {
               if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
                   return CorretoraCompanyName;
@@ -82,7 +88,7 @@ jobs:
           }
 
           '''
-          s = s.replace(marker, method + marker, 1)
+          s = s.replace(marker, canonical_method + marker, 1)
 
           path.write_text(s, encoding='utf-8', newline='\n')
           '@ | Set-Content patch.py -Encoding UTF8
@@ -100,5 +106,5 @@ jobs:
           git config user.name "Alexandre Mallorca"
           git config user.email "99052118+AlexMalls@users.noreply.github.com"
           git add SantanderCommitmentMemoryService.cs
-          git commit -m "Corrige nome da empresa pelo convenio Santander"
+          git commit -m "Corrige empresa exibida pelo convenio Santander"
           git push
