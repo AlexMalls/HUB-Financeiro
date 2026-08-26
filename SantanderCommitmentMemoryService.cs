@@ -80,6 +80,10 @@ public static class SantanderCommitmentMemoryService
     private static DateTime _nextContextProbeUtc;
     private static bool _captureInProgress;
     private static string _lastContextDiagnostic = string.Empty;
+    private static string _pendingContextKey = string.Empty;
+    private static string _pendingContextBaselineTableSignature = string.Empty;
+    private static DateTime _pendingContextDetectedAt = DateTime.MinValue;
+    private static bool _pendingContextSawEmptyResult;
 
     public static event Action? MemoryChanged;
 
@@ -121,6 +125,10 @@ public static class SantanderCommitmentMemoryService
             _lastSeenTableSignature = string.Empty;
             _lastStoredCompositeSignature = string.Empty;
             _lastDetectedContextKey = string.Empty;
+            _pendingContextKey = string.Empty;
+            _pendingContextBaselineTableSignature = string.Empty;
+            _pendingContextDetectedAt = DateTime.MinValue;
+            _pendingContextSawEmptyResult = false;
             _nextContextProbeUtc = DateTime.MinValue;
         }
 
@@ -160,6 +168,10 @@ public static class SantanderCommitmentMemoryService
             _lastSeenTableSignature = string.Empty;
             _lastStoredCompositeSignature = string.Empty;
             _lastDetectedContextKey = string.Empty;
+            _pendingContextKey = string.Empty;
+            _pendingContextBaselineTableSignature = string.Empty;
+            _pendingContextDetectedAt = DateTime.MinValue;
+            _pendingContextSawEmptyResult = false;
             _lastContextDiagnostic = string.Empty;
             _nextContextProbeUtc = DateTime.MinValue;
             _captureInProgress = false;
@@ -191,6 +203,10 @@ public static class SantanderCommitmentMemoryService
             _lastSeenTableSignature = string.Empty;
             _lastStoredCompositeSignature = string.Empty;
             _lastDetectedContextKey = string.Empty;
+            _pendingContextKey = string.Empty;
+            _pendingContextBaselineTableSignature = string.Empty;
+            _pendingContextDetectedAt = DateTime.MinValue;
+            _pendingContextSawEmptyResult = false;
             _nextContextProbeUtc = DateTime.MinValue;
         }
 
@@ -208,22 +224,25 @@ public static class SantanderCommitmentMemoryService
             }
 
             var snapshot = SantanderCommitmentAnalyzerService.LatestSnapshot;
-            if (!IsEffectiveResult(snapshot))
-                return;
-
+            var effectiveResult = IsEffectiveResult(snapshot);
             var now = DateTime.UtcNow;
-            var tableSignature = BuildTableSignature(snapshot!);
-            bool tableChanged;
+            var tableSignature = effectiveResult ? BuildTableSignature(snapshot!) : string.Empty;
+            bool tableChanged = false;
+            string previousEffectiveTableSignature;
 
             lock (Sync)
             {
-                tableChanged = !string.Equals(tableSignature, _lastSeenTableSignature, StringComparison.Ordinal);
-                if (tableChanged)
-                    _lastSeenTableSignature = tableSignature;
+                previousEffectiveTableSignature = _lastSeenTableSignature;
 
-                // Se a tabela mudou, verificamos imediatamente. Se não mudou, fazemos
-                // apenas uma sonda contextual leve a cada ~1,6s enquanto a tela correta
-                // está ativa. Isso detecta Trocar Convênio sem consultar rede/banco.
+                if (effectiveResult)
+                {
+                    tableChanged = !string.Equals(tableSignature, _lastSeenTableSignature, StringComparison.Ordinal);
+                    if (tableChanged)
+                        _lastSeenTableSignature = tableSignature;
+                }
+
+                // Mesmo sem tabela, a sonda contextual continua ativa. Assim a troca
+                // de convênio enxerga a tela vazia e não reaproveita o snapshot antigo.
                 if (!tableChanged && now < _nextContextProbeUtc)
                     return;
 
@@ -231,8 +250,12 @@ public static class SantanderCommitmentMemoryService
                 _captureInProgress = true;
             }
 
-            var frozenSnapshot = CloneSnapshot(snapshot!);
-            _ = Task.Run(() => CaptureContextAndStore(frozenSnapshot, tableSignature));
+            var frozenSnapshot = snapshot == null ? null : CloneSnapshot(snapshot);
+            _ = Task.Run(() => CaptureContextAndStore(
+                frozenSnapshot,
+                tableSignature,
+                previousEffectiveTableSignature,
+                effectiveResult));
         }
         catch (Exception ex)
         {
@@ -288,7 +311,11 @@ public static class SantanderCommitmentMemoryService
         return builder.ToString();
     }
 
-    private static void CaptureContextAndStore(SantanderCommitmentSnapshot snapshot, string tableSignature)
+    private static void CaptureContextAndStore(
+        SantanderCommitmentSnapshot? snapshot,
+        string tableSignature,
+        string previousEffectiveTableSignature,
+        bool effectiveResult)
     {
         try
         {
@@ -309,21 +336,37 @@ public static class SantanderCommitmentMemoryService
                 : detection.Empresa;
 
             var contextKey = $"{BankName}|{detection.Contexto}|{detection.Convenio}";
-            var contextChanged = false;
+            var firstContextDetection = false;
+            var contextSwitched = false;
             string previousContext;
 
             lock (Sync)
             {
                 previousContext = _lastDetectedContextKey;
+                firstContextDetection = string.IsNullOrWhiteSpace(previousContext);
+
                 if (!string.Equals(previousContext, contextKey, StringComparison.OrdinalIgnoreCase))
                 {
                     _lastDetectedContextKey = contextKey;
-                    contextChanged = true;
+
+                    if (!firstContextDetection)
+                    {
+                        contextSwitched = true;
+                        _pendingContextKey = contextKey;
+                        _pendingContextBaselineTableSignature = previousEffectiveTableSignature;
+                        _pendingContextDetectedAt = DateTime.Now;
+                        _pendingContextSawEmptyResult = !effectiveResult;
+                    }
                 }
+                else if (string.Equals(_pendingContextKey, contextKey, StringComparison.OrdinalIgnoreCase) && !effectiveResult)
+                {
+                    _pendingContextSawEmptyResult = true;
+                }
+
                 _lastContextDiagnostic = string.Empty;
             }
 
-            if (contextChanged)
+            if (firstContextDetection || contextSwitched)
             {
                 var previousDisplay = string.IsNullOrWhiteSpace(previousContext)
                     ? "nenhum"
@@ -335,9 +378,60 @@ public static class SantanderCommitmentMemoryService
                     DebugEntryLevel.Action);
             }
 
-            // O número do convênio é a fonte de verdade do contexto. A assinatura
-            // não inclui o período dos inputs para não associar uma tabela antiga a
-            // uma data recém-selecionada antes do resultado realmente ser carregado.
+            if (contextSwitched)
+            {
+                DebugService.Record(
+                    "SANTANDER",
+                    "Troca de convênio detectada | snapshot anterior invalidado; aguardando resultado novo antes de salvar o novo contexto.",
+                    DebugEntryLevel.Background);
+                return;
+            }
+
+            if (!effectiveResult || snapshot == null)
+                return;
+
+            bool waitingForFreshContextResult;
+            bool sawEmptyResult;
+            string baselineTableSignature;
+            DateTime detectedAt;
+
+            lock (Sync)
+            {
+                waitingForFreshContextResult = string.Equals(_pendingContextKey, contextKey, StringComparison.OrdinalIgnoreCase);
+                sawEmptyResult = _pendingContextSawEmptyResult;
+                baselineTableSignature = _pendingContextBaselineTableSignature;
+                detectedAt = _pendingContextDetectedAt;
+            }
+
+            if (waitingForFreshContextResult)
+            {
+                if (!IsSafeSnapshotAfterContextSwitch(
+                        snapshot.CapturadoEm,
+                        detectedAt,
+                        tableSignature,
+                        baselineTableSignature,
+                        sawEmptyResult))
+                {
+                    return;
+                }
+
+                lock (Sync)
+                {
+                    if (string.Equals(_pendingContextKey, contextKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _pendingContextKey = string.Empty;
+                        _pendingContextBaselineTableSignature = string.Empty;
+                        _pendingContextDetectedAt = DateTime.MinValue;
+                        _pendingContextSawEmptyResult = false;
+                    }
+                }
+
+                DebugService.Record(
+                    "SANTANDER",
+                    "Resultado novo confirmado após troca de convênio | contexto liberado para persistência.",
+                    DebugEntryLevel.Background);
+            }
+
             var compositeSignature = $"{contextKey}|{tableSignature}";
 
             lock (Sync)
@@ -360,6 +454,22 @@ public static class SantanderCommitmentMemoryService
             lock (Sync)
                 _captureInProgress = false;
         }
+    }
+
+    internal static bool IsSafeSnapshotAfterContextSwitch(
+        DateTime snapshotCapturedAt,
+        DateTime contextDetectedAt,
+        string tableSignature,
+        string previousContextTableSignature,
+        bool sawEmptyResult)
+    {
+        if (snapshotCapturedAt <= contextDetectedAt)
+            return false;
+
+        if (sawEmptyResult)
+            return true;
+
+        return !string.Equals(tableSignature, previousContextTableSignature, StringComparison.Ordinal);
     }
 
     private static void PublishContextDiagnosticOnce(string message)
@@ -441,6 +551,69 @@ public static class SantanderCommitmentMemoryService
             Entries.Remove(obsolete.StorageKey);
     }
 
+    private static int RemoveCrossContextRaceDuplicatesUnsafe()
+    {
+        const double duplicateWindowSeconds = 5d;
+        var ordered = Entries.Values.OrderBy(entry => entry.AtualizadoEm).ToList();
+        var keysToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var older = ordered[i];
+            if (keysToRemove.Contains(older.StorageKey))
+                continue;
+
+            for (var j = i + 1; j < ordered.Count; j++)
+            {
+                var newer = ordered[j];
+                if (keysToRemove.Contains(newer.StorageKey))
+                    continue;
+
+                if (!string.Equals(older.Banco, newer.Banco, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(older.Contexto, newer.Contexto, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(older.DataInicial, newer.DataInicial, StringComparison.Ordinal) ||
+                    !string.Equals(older.DataFinal, newer.DataFinal, StringComparison.Ordinal))
+                    continue;
+
+                if (Math.Abs((newer.AtualizadoEm - older.AtualizadoEm).TotalSeconds) > duplicateWindowSeconds)
+                    continue;
+
+                if (string.Equals(BuildStoredEntryPayloadSignature(older), BuildStoredEntryPayloadSignature(newer), StringComparison.Ordinal))
+                    keysToRemove.Add(newer.StorageKey);
+            }
+        }
+
+        foreach (var key in keysToRemove)
+            Entries.Remove(key);
+
+        return keysToRemove.Count;
+    }
+
+    private static string BuildStoredEntryPayloadSignature(SantanderCommitmentMemoryEntry entry)
+    {
+        var builder = new StringBuilder();
+        builder.Append(entry.TotalPagamentos)
+            .Append('|')
+            .Append(entry.ValorTotal)
+            .Append('|')
+            .Append(entry.ValorTotalNumerico?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)
+            .Append('|');
+
+        foreach (var payment in entry.Pagamentos)
+        {
+            builder.Append(payment.DataPagamento).Append('|')
+                .Append(payment.Favorecido).Append('|')
+                .Append(payment.NumeroPagamento).Append('|')
+                .Append(payment.NumeroCliente).Append('|')
+                .Append(payment.Valor).Append('|')
+                .Append(payment.TipoPagamento).Append('|')
+                .Append(payment.Situacao).Append('|')
+                .Append(payment.Canal).Append(';');
+        }
+
+        return builder.ToString();
+    }
+
     private static string ResolvePersistenceDirectory()
     {
         const string AlexandreUser = @"C:\Users\Alexandre Mallorca";
@@ -470,6 +643,7 @@ public static class SantanderCommitmentMemoryService
                 json,
                 PersistenceJsonOptions) ?? new List<SantanderCommitmentMemoryEntry>();
 
+            int removedCrossContextDuplicates;
             lock (Sync)
             {
                 Entries.Clear();
@@ -479,6 +653,8 @@ public static class SantanderCommitmentMemoryService
                         Entries[entry.StorageKey] = entry;
                 }
 
+                removedCrossContextDuplicates = RemoveCrossContextRaceDuplicatesUnsafe();
+
                 var contextKeys = Entries.Values
                     .Select(entry => entry.ContextKey)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -486,6 +662,15 @@ public static class SantanderCommitmentMemoryService
 
                 foreach (var contextKey in contextKeys)
                     TrimUnsafe(contextKey);
+            }
+
+            if (removedCrossContextDuplicates > 0)
+            {
+                PersistEntriesToDisk();
+                DebugService.Record(
+                    "OPEX",
+                    $"Migração de segurança: {removedCrossContextDuplicates} snapshot(s) duplicado(s) entre convênios foram removidos do histórico.",
+                    DebugEntryLevel.System);
             }
 
             DebugService.Record(
