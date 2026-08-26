@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   patch-build:
-    if: github.event.head_commit.message == 'Corrige workflow de patch de empresa por convênio'
+    if: github.event.head_commit.message == 'Ajusta patch regex de empresa por convênio'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,18 +28,24 @@ jobs:
           path = Path('SantanderCommitmentMemoryService.cs')
           s = path.read_text(encoding='utf-8')
 
-          old_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
-          private const string CorretoraConvenio = "0033-4268-004905078983";'''
-          new_constants = '''    private const string AdministradoraConvenio = "0033-3409-004902845301";
-          private const string CorretoraConvenio = "0033-4268-004905078983";
-          private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";
-          private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'''
-          if old_constants not in s:
-              raise SystemExit('constants target not found')
-          s = s.replace(old_constants, new_constants, 1)
+          constants_pattern = re.compile(
+              r'(?m)^(\s*)private const string AdministradoraConvenio = "0033-3409-004902845301";\s*\n\1private const string CorretoraConvenio = "0033-4268-004905078983";')
+
+          def replace_constants(match):
+              indent = match.group(1)
+              return (
+                  f'{indent}private const string AdministradoraConvenio = "0033-3409-004902845301";\n'
+                  f'{indent}private const string CorretoraConvenio = "0033-4268-004905078983";\n'
+                  f'{indent}private const string AdministradoraCompanyName = "POSITIVA ADMINISTRADORA DE BENEFÍCIOS LTDA";\n'
+                  f'{indent}private const string CorretoraCompanyName = "POSITIVA CORRETORA DE SEGUROS LTDA";'
+              )
+
+          s, count = constants_pattern.subn(replace_constants, s, count=1)
+          if count != 1:
+              raise SystemExit('constants patch failed')
 
           detect_pattern = re.compile(
-              r'    private static ContextDetection DetectCompanyContext\(\)\n    \{.*?\n    \}\n\n(?=    private static bool FindAnyExactName)',
+              r'    private static ContextDetection DetectCompanyContext\(\)\r?\n    \{.*?\r?\n    \}\r?\n\r?\n(?=    private static bool FindAnyExactName)',
               re.S)
           detect_replacement = '''    private static ContextDetection DetectCompanyContext()
           {
@@ -75,7 +81,10 @@ jobs:
 
           marker = '    private static string ClassifyContextFromConvenio(string convenio)\n'
           if marker not in s:
+              marker = '    private static string ClassifyContextFromConvenio(string convenio)\r\n'
+          if marker not in s:
               raise SystemExit('classify marker not found')
+
           canonical_method = '''    private static string CanonicalCompanyNameFromConvenio(string convenio)
           {
               if (string.Equals(convenio, CorretoraConvenio, StringComparison.OrdinalIgnoreCase))
