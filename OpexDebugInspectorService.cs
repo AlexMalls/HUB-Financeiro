@@ -6,7 +6,7 @@ using System.Windows.Threading;
 namespace HubFinanceiro;
 
 /// <summary>
-/// Injeta o olho verde de Debug na O.P.E.X. sem alterar o XAML principal.
+/// Injeta um olho verde discreto de Debug na O.P.E.X. sem alterar o XAML principal.
 /// O botão só aparece enquanto o Modo Debug está ativo.
 /// </summary>
 public static class OpexDebugInspectorService
@@ -58,13 +58,12 @@ public static class OpexDebugInspectorService
         _opexGrid.IsVisibleChanged += OpexGrid_IsVisibleChanged;
 
         var green = new SolidColorBrush(Color.FromRgb(85, 217, 138));
-        var hoverBackground = new SolidColorBrush(Color.FromArgb(65, 85, 217, 138));
 
         var glyph = new TextBlock
         {
             Text = "\uE890",
             FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            FontSize = 19,
+            FontSize = 14,
             Foreground = green,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
@@ -72,23 +71,24 @@ public static class OpexDebugInspectorService
 
         var button = new Button
         {
-            Width = 34,
-            Height = 34,
+            Width = 22,
+            Height = 22,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(-13, -13, 0, 0),
+            Margin = new Thickness(4, 3, 0, 0),
             Padding = new Thickness(0),
             Background = Brushes.Transparent,
-            BorderBrush = green,
-            BorderThickness = new Thickness(1),
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
             Content = glyph,
-            ToolTip = "Debug O.P.E.X. — ver memória temporária por trás da rotina",
+            Opacity = 0.78,
+            ToolTip = "Debug O.P.E.X. — ver memória temporária",
             Visibility = Visibility.Collapsed
         };
 
-        button.MouseEnter += (_, _) => button.Background = hoverBackground;
-        button.MouseLeave += (_, _) => button.Background = Brushes.Transparent;
+        button.MouseEnter += (_, _) => button.Opacity = 1.0;
+        button.MouseLeave += (_, _) => button.Opacity = 0.78;
         button.Click += EyeButton_Click;
 
         Panel.SetZIndex(button, 10000);
