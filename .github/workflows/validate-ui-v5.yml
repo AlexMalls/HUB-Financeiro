@@ -23,10 +23,4 @@ jobs:
 
       - name: Run UI regression tests
         shell: pwsh
-        run: |
-          $process = Start-Process `
-            -FilePath ".\bin\Debug\net8.0-windows\HubFinanceiro.exe" `
-            -ArgumentList "--validar-ajustes-ui" `
-            -Wait `
-            -PassThru
-          exit $process.ExitCode
+        run: dotnet .\bin\Debug\net8.0-windows\HubFinanceiro.dll --validar-ajustes-ui
