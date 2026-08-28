@@ -21,7 +21,7 @@ public static class UiCorrecoesPolicy
         termo = termo?.Trim() ?? string.Empty;
 
         return fornecedores
-            .Where(f => f.Ativo)
+            .Where(f => f.Ativo && FornecedorPodeReceberEmail(f))
             .Where(f => string.IsNullOrWhiteSpace(termo)
                 || f.Nome.Contains(termo, StringComparison.CurrentCultureIgnoreCase))
             .OrderBy(f => f.Nome)
