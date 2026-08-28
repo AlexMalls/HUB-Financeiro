@@ -9,8 +9,8 @@ public static class UiCorrecoesTestes
         DeveConstruirTabelaFornecedoresMesmoComPainelEmailOculto();
         DeveAlinharLayoutComPesquisaFornecedores();
         DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores();
-        DeveReservarRoxoParaEstadosAtivosNaTelaFornecedores();
         DeveManterAcoesOpexVisiveisEmLarguraCompacta();
+        DeveReservarRoxoParaEstadosAtivosNaTelaFornecedores();
         DeveIgnorarClientesCanceladosPorPadrao();
         DeveReservarLarguraSuficienteParaBotoesOpex();
     }
