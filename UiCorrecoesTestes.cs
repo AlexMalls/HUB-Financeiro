@@ -9,10 +9,12 @@ public static class UiCorrecoesTestes
         DeveConstruirTabelaFornecedoresMesmoComPainelEmailOculto();
         DeveAlinharLayoutComPesquisaFornecedores();
         DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores();
-        DeveManterAcoesOpexVisiveisEmLarguraCompacta();
         DeveReservarRoxoParaEstadosAtivosNaTelaFornecedores();
+        DeveSimplificarAcoesOpexEmMenuFlutuante();
+        DeveDimensionarBotoesOpexPeloConteudo();
+        DeveExibirLixeiraEmCadaRegistroOpex();
+        DeveExcluirComDeleteSomenteForaDeCamposEditaveis();
         DeveIgnorarClientesCanceladosPorPadrao();
-        DeveReservarLarguraSuficienteParaBotoesOpex();
     }
 
     private static void DeveFiltrarFornecedoresAtivosPorNome()
@@ -184,7 +186,7 @@ public static class UiCorrecoesTestes
         }
     }
 
-    private static void DeveManterAcoesOpexVisiveisEmLarguraCompacta()
+    private static void DeveSimplificarAcoesOpexEmMenuFlutuante()
     {
         if (System.Windows.Application.Current == null)
         {
@@ -195,35 +197,42 @@ public static class UiCorrecoesTestes
         var window = new MainWindow();
         try
         {
-            const double larguraCompacta = 1000d;
-            window.OpexLayoutGrid.Visibility = System.Windows.Visibility.Visible;
-            window.OpexInputsGrid.Measure(new System.Windows.Size(larguraCompacta, double.PositiveInfinity));
-            var altura = Math.Max(84d, window.OpexInputsGrid.DesiredSize.Height);
-            window.OpexInputsGrid.Arrange(new System.Windows.Rect(0, 0, larguraCompacta, altura));
-            window.OpexInputsGrid.UpdateLayout();
+            var grupo = EncontrarDescendentePorTag<System.Windows.Controls.StackPanel>(
+                window.OpexInputsGrid,
+                "OpexV8Actions");
 
-            var botoes = new System.Windows.FrameworkElement[]
-            {
-                window.BtnRegistrarPagamento,
-                window.BtnExcluirPagamento,
-                window.BtnImportar,
-                window.BtnMovimentarRegistros,
-                window.BtnConferirPagamentos
-            };
+            Assert(grupo != null,
+                "a O.P.E.X. deve ter um único grupo de ações primárias alinhado à direita");
+            Assert(grupo!.Children.Count == 2,
+                "apenas Registrar/Atualizar e Ações O.P.E.X. devem ficar aparentes");
+            Assert(ReferenceEquals(grupo.Children[0], window.BtnRegistrarPagamento),
+                "Registrar/Atualizar Pagamento deve ser o primeiro botão do grupo");
 
-            foreach (var botao in botoes)
-            {
-                var posicao = botao.TranslatePoint(new System.Windows.Point(0, 0), window.OpexInputsGrid);
-                Assert(posicao.X >= -1d && posicao.X + botao.ActualWidth <= larguraCompacta + 1d,
-                    $"o botão {botao.Name} deve ficar totalmente visível em uma área de 1000 px");
-            }
+            var botaoAcoes = grupo.Children[1] as System.Windows.Controls.Button;
+            Assert(botaoAcoes != null && Equals(botaoAcoes.Content, "Ações O.P.E.X. ▾"),
+                "o segundo botão deve abrir as Ações O.P.E.X.");
+            Assert(botaoAcoes!.ContextMenu != null,
+                "Ações O.P.E.X. deve abrir um menu flutuante");
 
-            var topoRegistrar = window.BtnRegistrarPagamento
-                .TranslatePoint(new System.Windows.Point(0, 0), window.OpexInputsGrid).Y;
-            var topoImportar = window.BtnImportar
-                .TranslatePoint(new System.Windows.Point(0, 0), window.OpexInputsGrid).Y;
-            Assert(topoImportar > topoRegistrar + 1d,
-                "as ações secundárias da O.P.E.X. devem ocupar uma segunda linha");
+            var cabecalhos = botaoAcoes.ContextMenu!.Items
+                .OfType<System.Windows.Controls.MenuItem>()
+                .Select(item => item.Header?.ToString())
+                .ToArray();
+
+            Assert(cabecalhos.SequenceEqual(new[]
+                {
+                    "Importar",
+                    "Movimentar Registros",
+                    "Conferir Pagamentos"
+                }),
+                "o menu deve conter Importar, Movimentar Registros e Conferir Pagamentos nessa ordem");
+
+            Assert(window.BtnExcluirPagamento.Parent == null,
+                "o botão Excluir Registro antigo não deve permanecer na barra da O.P.E.X.");
+            Assert(window.BtnImportar.Parent == null
+                && window.BtnMovimentarRegistros.Parent == null
+                && window.BtnConferirPagamentos.Parent == null,
+                "as três ações secundárias antigas não devem permanecer expostas na barra");
         }
         finally
         {
@@ -231,18 +240,134 @@ public static class UiCorrecoesTestes
         }
     }
 
+    private static void DeveDimensionarBotoesOpexPeloConteudo()
+    {
+        if (System.Windows.Application.Current == null)
+        {
+            var app = new App();
+            app.InitializeComponent();
+        }
+
+        var window = new MainWindow();
+        try
+        {
+            var grupo = EncontrarDescendentePorTag<System.Windows.Controls.StackPanel>(
+                window.OpexInputsGrid,
+                "OpexV8Actions");
+            Assert(grupo != null, "o grupo de ações O.P.E.X. deve existir");
+            Assert(grupo!.HorizontalAlignment == System.Windows.HorizontalAlignment.Right,
+                "os botões da O.P.E.X. devem permanecer alinhados à direita");
+
+            var botaoAcoes = grupo.Children.OfType<System.Windows.Controls.Button>().Last();
+            Assert(double.IsNaN(window.BtnRegistrarPagamento.Width),
+                "Registrar/Atualizar deve usar largura automática baseada no conteúdo");
+            Assert(double.IsNaN(botaoAcoes.Width),
+                "Ações O.P.E.X. deve usar largura automática baseada no conteúdo");
+            Assert(window.BtnRegistrarPagamento.MinWidth <= 1d && botaoAcoes.MinWidth <= 1d,
+                "os botões não devem carregar larguras mínimas fixas do layout anterior");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void DeveExibirLixeiraEmCadaRegistroOpex()
+    {
+        if (System.Windows.Application.Current == null)
+        {
+            var app = new App();
+            app.InitializeComponent();
+        }
+
+        var window = new MainWindow();
+        try
+        {
+            var pagamento = new PrevisaoPagamento
+            {
+                Id = 991,
+                CodigoFornecedor = 123,
+                NomeFornecedor = "Fornecedor teste V8",
+                Natureza = 20805,
+                TipoPagamento = 3,
+                Valor = 250.75m,
+                DataPagamento = new DateTime(2026, 8, 28),
+                Empresa = "ADM",
+                Status = "Pendente"
+            };
+
+            window.OpexLayoutGrid.Visibility = System.Windows.Visibility.Visible;
+            window.PagamentosItemsControl.ItemsSource = new[] { pagamento };
+            window.OpexLayoutGrid.Measure(new System.Windows.Size(1100, 650));
+            window.OpexLayoutGrid.Arrange(new System.Windows.Rect(0, 0, 1100, 650));
+            window.OpexLayoutGrid.UpdateLayout();
+            window.Dispatcher.Invoke(
+                () => { },
+                System.Windows.Threading.DispatcherPriority.Loaded);
+            window.OpexLayoutGrid.UpdateLayout();
+
+            var container = window.PagamentosItemsControl.ItemContainerGenerator.ContainerFromIndex(0);
+            Assert(container != null, "a linha de pagamento de teste deve gerar um container visual");
+
+            var lixeira = EncontrarDescendentePorTag<System.Windows.Controls.Button>(
+                container!,
+                "OpexExcluirRegistro");
+            Assert(lixeira != null,
+                "cada registro da O.P.E.X. deve exibir uma lixeira individual à direita");
+            Assert(ReferenceEquals(lixeira!.DataContext, pagamento),
+                "a lixeira deve apontar para o registro da própria linha");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void DeveExcluirComDeleteSomenteForaDeCamposEditaveis()
+    {
+        var metodo = typeof(UiCorrecoesPolicy).GetMethod(
+            "DeveExcluirPagamentoComDelete",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+
+        Assert(metodo != null,
+            "deve existir uma política explícita para exclusão pelo teclado na O.P.E.X.");
+
+        bool deveExcluir = (bool)metodo!.Invoke(null, new object[] { true, true, false })!;
+        bool naoExcluirEditando = (bool)metodo.Invoke(null, new object[] { true, true, true })!;
+        bool naoExcluirSemSelecao = (bool)metodo.Invoke(null, new object[] { true, false, false })!;
+        bool naoExcluirOutraTecla = (bool)metodo.Invoke(null, new object[] { false, true, false })!;
+
+        Assert(deveExcluir,
+            "Delete deve excluir quando há registro selecionado e nenhum campo está sendo editado");
+        Assert(!naoExcluirEditando,
+            "Delete dentro de um campo editável não pode excluir o registro");
+        Assert(!naoExcluirSemSelecao,
+            "Delete sem registro selecionado não deve excluir nada");
+        Assert(!naoExcluirOutraTecla,
+            "outras teclas não devem acionar a exclusão");
+    }
+
+    private static T? EncontrarDescendentePorTag<T>(System.Windows.DependencyObject raiz, object tag)
+        where T : System.Windows.FrameworkElement
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(raiz); i++)
+        {
+            var filho = System.Windows.Media.VisualTreeHelper.GetChild(raiz, i);
+            if (filho is T elemento && Equals(elemento.Tag, tag))
+                return elemento;
+
+            var encontrado = EncontrarDescendentePorTag<T>(filho, tag);
+            if (encontrado != null)
+                return encontrado;
+        }
+
+        return null;
+    }
+
     private static void DeveIgnorarClientesCanceladosPorPadrao()
     {
         Assert(UiCorrecoesPolicy.IgnorarClientesCanceladosPorPadrao,
             "Ignorar clientes cancelados deve iniciar marcado");
-    }
-
-    private static void DeveReservarLarguraSuficienteParaBotoesOpex()
-    {
-        Assert(UiCorrecoesPolicy.LarguraMinimaRegistrarPagamento >= 185,
-            "Registrar/Alterar Pagamento precisa de largura suficiente para o texto completo");
-        Assert(UiCorrecoesPolicy.LarguraConferirPagamentos >= 175,
-            "Conferir Pagamentos precisa de largura suficiente para o texto completo");
     }
 
     private static void Assert(bool condition, string scenario)
