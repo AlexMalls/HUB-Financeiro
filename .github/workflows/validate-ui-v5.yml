@@ -22,4 +22,11 @@ jobs:
         run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
 
       - name: Run UI regression tests
-        run: .\bin\Debug\net8.0-windows\HubFinanceiro.exe --validar-ajustes-ui
+        shell: pwsh
+        run: |
+          $process = Start-Process `
+            -FilePath ".\bin\Debug\net8.0-windows\HubFinanceiro.exe" `
+            -ArgumentList "--validar-ajustes-ui" `
+            -Wait `
+            -PassThru
+          exit $process.ExitCode
