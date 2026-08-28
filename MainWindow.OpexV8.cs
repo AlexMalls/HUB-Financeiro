@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 
 namespace HubFinanceiro;
 
@@ -105,36 +106,126 @@ public partial class MainWindow
         var menu = new ContextMenu
         {
             Background = (Brush)FindResource("BackgroundMedium"),
-            BorderBrush = (Brush)FindResource("BorderColor"),
+            BorderBrush = (Brush)FindResource("AccentColor"),
             BorderThickness = new Thickness(1),
-            Padding = new Thickness(4),
-            MinWidth = 205,
+            Padding = new Thickness(5),
+            MinWidth = 215,
             HasDropShadow = true,
             Placement = PlacementMode.Bottom,
-            StaysOpen = false
+            StaysOpen = false,
+            Template = CriarTemplateContextMenuOpex()
         };
 
         var estiloOpcao = new Style(typeof(MenuItem));
         estiloOpcao.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
         estiloOpcao.Setters.Add(new Setter(Control.ForegroundProperty, (Brush)FindResource("TextColor")));
-        estiloOpcao.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 9, 12, 9)));
+        estiloOpcao.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14, 10, 14, 10)));
         estiloOpcao.Setters.Add(new Setter(Control.FontSizeProperty, 13d));
         estiloOpcao.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
         estiloOpcao.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
-
-        var hover = new Trigger
-        {
-            Property = MenuItem.IsHighlightedProperty,
-            Value = true
-        };
-        hover.Setters.Add(new Setter(Control.BackgroundProperty, (Brush)FindResource("PrimaryColor")));
-        estiloOpcao.Triggers.Add(hover);
+        estiloOpcao.Setters.Add(new Setter(Control.TemplateProperty, CriarTemplateItemMenuOpex()));
 
         menu.Items.Add(CriarOpcaoMenuOpex("Importar", BtnImportar, estiloOpcao));
         menu.Items.Add(CriarOpcaoMenuOpex("Movimentar Registros", BtnMovimentarRegistros, estiloOpcao));
         menu.Items.Add(CriarOpcaoMenuOpex("Conferir Pagamentos", BtnConferirPagamentos, estiloOpcao));
 
         return menu;
+    }
+
+    private ControlTemplate CriarTemplateContextMenuOpex()
+    {
+        var template = new ControlTemplate(typeof(ContextMenu));
+
+        var borda = new FrameworkElementFactory(typeof(Border));
+        borda.SetBinding(Border.BackgroundProperty, new Binding(nameof(Control.Background))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        borda.SetBinding(Border.BorderBrushProperty, new Binding(nameof(Control.BorderBrush))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        borda.SetBinding(Border.BorderThicknessProperty, new Binding(nameof(Control.BorderThickness))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        borda.SetBinding(Border.PaddingProperty, new Binding(nameof(Control.Padding))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        borda.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+        borda.SetValue(UIElement.SnapsToDevicePixelsProperty, true);
+        borda.SetValue(UIElement.EffectProperty, new DropShadowEffect
+        {
+            Color = Colors.Black,
+            BlurRadius = 14,
+            ShadowDepth = 4,
+            Direction = 270,
+            Opacity = 0.45
+        });
+
+        var itens = new FrameworkElementFactory(typeof(StackPanel));
+        itens.SetValue(Panel.IsItemsHostProperty, true);
+        itens.SetValue(FrameworkElement.MarginProperty, new Thickness(0));
+        borda.AppendChild(itens);
+
+        template.VisualTree = borda;
+        return template;
+    }
+
+    private ControlTemplate CriarTemplateItemMenuOpex()
+    {
+        var template = new ControlTemplate(typeof(MenuItem));
+
+        var borda = new FrameworkElementFactory(typeof(Border), "ItemBorder");
+        borda.SetBinding(Border.BackgroundProperty, new Binding(nameof(Control.Background))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        borda.SetValue(Border.CornerRadiusProperty, new CornerRadius(6));
+        borda.SetValue(FrameworkElement.MarginProperty, new Thickness(1));
+
+        var conteudo = new FrameworkElementFactory(typeof(ContentPresenter));
+        conteudo.SetBinding(ContentPresenter.ContentProperty, new Binding(nameof(MenuItem.Header))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        conteudo.SetBinding(ContentPresenter.ContentTemplateProperty, new Binding(nameof(MenuItem.HeaderTemplate))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        conteudo.SetBinding(ContentPresenter.ContentTemplateSelectorProperty, new Binding(nameof(MenuItem.HeaderTemplateSelector))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        conteudo.SetBinding(ContentPresenter.MarginProperty, new Binding(nameof(Control.Padding))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+        });
+        conteudo.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
+        conteudo.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        conteudo.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        borda.AppendChild(conteudo);
+
+        template.VisualTree = borda;
+
+        var destacado = new Trigger
+        {
+            Property = MenuItem.IsHighlightedProperty,
+            Value = true
+        };
+        destacado.Setters.Add(new Setter(Border.BackgroundProperty, CriarBrushOpex("#342244"), "ItemBorder"));
+        template.Triggers.Add(destacado);
+
+        var desabilitado = new Trigger
+        {
+            Property = UIElement.IsEnabledProperty,
+            Value = false
+        };
+        desabilitado.Setters.Add(new Setter(UIElement.OpacityProperty, 0.45));
+        template.Triggers.Add(desabilitado);
+
+        return template;
     }
 
     private static MenuItem CriarOpcaoMenuOpex(string texto, Button acaoOriginal, Style estilo)
