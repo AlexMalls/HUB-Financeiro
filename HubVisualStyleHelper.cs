@@ -16,6 +16,10 @@ internal static class HubVisualStyleHelper
     {
         var origem = Application.Current?.MainWindow;
         if (origem?.TryFindResource("CustomCheckBoxStyle") is Style style)
+        {
             checkBox.Style = style;
+            checkBox.ClearValue(FrameworkElement.WidthProperty);
+            checkBox.ClearValue(FrameworkElement.HeightProperty);
+        }
     }
 }
