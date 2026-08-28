@@ -8,6 +8,7 @@ public partial class InfosPositivaWindow : Window
     public InfosPositivaWindow()
     {
         InitializeComponent();
+        HubVisualStyleHelper.AplicarScrollBarPadrao(this);
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
