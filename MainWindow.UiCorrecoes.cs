@@ -12,7 +12,7 @@ public partial class MainWindow
     private void AplicarCorrecoesUiGerais()
     {
         ConfigurarListaFornecedoresEmail();
-        AjustarBotoesOpex();
+        ConfigurarOpexV8();
     }
 
     private void ConfigurarListaFornecedoresEmail()
@@ -112,45 +112,6 @@ public partial class MainWindow
                     _fornecedorSelecionado = null;
             }
         }
-    }
-
-    private void AjustarBotoesOpex()
-    {
-        if (BtnRegistrarPagamento != null)
-        {
-            BtnRegistrarPagamento.MinWidth = UiCorrecoesPolicy.LarguraMinimaRegistrarPagamento;
-            BtnRegistrarPagamento.Padding = new Thickness(14, 0, 14, 0);
-            AjustarColunaDoBotao(
-                BtnRegistrarPagamento,
-                UiCorrecoesPolicy.LarguraMinimaRegistrarPagamento,
-                manterEstrela: true);
-        }
-
-        if (BtnConferirPagamentos != null)
-        {
-            BtnConferirPagamentos.MinWidth = UiCorrecoesPolicy.LarguraConferirPagamentos;
-            BtnConferirPagamentos.Padding = new Thickness(12, 0, 12, 0);
-            AjustarColunaDoBotao(
-                BtnConferirPagamentos,
-                UiCorrecoesPolicy.LarguraConferirPagamentos,
-                manterEstrela: false);
-        }
-    }
-
-    private static void AjustarColunaDoBotao(Button botao, double largura, bool manterEstrela)
-    {
-        if (botao.Parent is not Grid grid)
-            return;
-
-        var coluna = Grid.GetColumn(botao);
-        if (coluna < 0 || coluna >= grid.ColumnDefinitions.Count)
-            return;
-
-        var definition = grid.ColumnDefinitions[coluna];
-        definition.MinWidth = Math.Max(definition.MinWidth, largura);
-
-        if (!manterEstrela)
-            definition.Width = new GridLength(largura, GridUnitType.Pixel);
     }
 
     private static T? EncontrarFilhoVisual<T>(DependencyObject parent) where T : DependencyObject

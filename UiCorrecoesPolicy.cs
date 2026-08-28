@@ -3,8 +3,6 @@ namespace HubFinanceiro;
 public static class UiCorrecoesPolicy
 {
     public const bool IgnorarClientesCanceladosPorPadrao = true;
-    public const double LarguraMinimaRegistrarPagamento = 195d;
-    public const double LarguraConferirPagamentos = 185d;
 
     // A lista de fornecedores do Envio de E-mails replica a geometria visual da O.P.E.X.
     public const double AlturaCabecalhoFornecedorEmail = 45d;
@@ -31,5 +29,13 @@ public static class UiCorrecoesPolicy
     public static bool FornecedorPodeReceberEmail(Fornecedor fornecedor)
     {
         return fornecedor != null && !string.IsNullOrWhiteSpace(fornecedor.Email);
+    }
+
+    public static bool DeveExcluirPagamentoComDelete(
+        bool teclaDelete,
+        bool temPagamentoSelecionado,
+        bool focoEmCampoEditavel)
+    {
+        return teclaDelete && temPagamentoSelecionado && !focoEmCampoEditavel;
     }
 }
