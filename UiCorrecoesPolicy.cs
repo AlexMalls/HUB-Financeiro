@@ -5,6 +5,9 @@ public static class UiCorrecoesPolicy
     public const bool IgnorarClientesCanceladosPorPadrao = true;
     public const double LarguraMinimaRegistrarPagamento = 195d;
     public const double LarguraConferirPagamentos = 185d;
+    public const double AlturaCabecalhoFornecedorEmail = 45d;
+    public const double AlturaLinhaFornecedorEmail = 38d;
+    public const string CabecalhoFornecedorEmail = "Nome do Fornecedor";
 
     public static List<Fornecedor> FiltrarFornecedoresEmail(IEnumerable<Fornecedor> fornecedores, string? termo)
     {
