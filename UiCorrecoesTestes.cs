@@ -6,6 +6,7 @@ public static class UiCorrecoesTestes
     {
         DeveFiltrarFornecedoresAtivosPorNome();
         DeveManterFornecedorSemEmailNaPesquisaMasBloquearSelecao();
+        DeveConstruirTabelaFornecedoresMesmoComPainelEmailOculto();
         DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores();
         DeveIgnorarClientesCanceladosPorPadrao();
         DeveReservarLarguraSuficienteParaBotoesOpex();
@@ -33,6 +34,32 @@ public static class UiCorrecoesTestes
 
         Assert(resultado.Count == 1, "fornecedor sem e-mail deve continuar visível na lista");
         Assert(!UiCorrecoesPolicy.FornecedorPodeReceberEmail(semEmail), "fornecedor sem e-mail deve ficar bloqueado para seleção");
+    }
+
+    private static void DeveConstruirTabelaFornecedoresMesmoComPainelEmailOculto()
+    {
+        if (System.Windows.Application.Current == null)
+        {
+            var app = new App();
+            app.InitializeComponent();
+        }
+
+        var window = new MainWindow();
+        try
+        {
+            Assert(window.EmailLayoutGrid.Visibility == System.Windows.Visibility.Collapsed,
+                "o teste precisa reproduzir o estado inicial oculto do Envio de E-mails");
+            Assert(window.FindName("FornecedorEmailPesquisaTextBox") is System.Windows.Controls.TextBox,
+                "a pesquisa deve existir antes de o painel de e-mails ficar visível");
+            Assert(window.FindName("FornecedorEmailCabecalhoGrid") is System.Windows.Controls.Grid,
+                "o cabeçalho Fornecedor | E-mail deve existir antes de o painel ficar visível");
+            Assert(window.FindName("FornecedorEmailTabelaBorder") is System.Windows.Controls.Border,
+                "a tabela no padrão O.P.E.X. deve existir antes de o painel ficar visível");
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     private static void DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores()
