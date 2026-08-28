@@ -1199,10 +1199,11 @@
                                     </Grid.ColumnDefinitions>
                                     
                                     <!-- Lista de Fornecedores à Esquerda -->
-                                    <Border Grid.Column="0"
+                                    <Border x:Name="FornecedoresListaBorder"
+                                            Grid.Column="0"
                                             Background="#99252526"
                                             CornerRadius="10"
-                                            BorderBrush="{StaticResource AccentColor}"
+                                            BorderBrush="{StaticResource BorderColor}"
                                             BorderThickness="1"
                                             Padding="8">
                                         <Grid>
@@ -1221,11 +1222,12 @@
                                                       Margin="10,5,10,10"/>
 
                                             <!-- Barra de Pesquisa -->
-                                            <Border Grid.Row="1"
+                                            <Border x:Name="FornecedorPesquisaBorder"
+                                                    Grid.Row="1"
                                                     Background="#992A2A2D"
-                                                    BorderBrush="{StaticResource AccentColor}"
+                                                    BorderBrush="{StaticResource BorderColor}"
                                                     BorderThickness="1"
-                                                    CornerRadius="20"
+                                                    CornerRadius="6"
                                                     Margin="5,0,5,10"
                                                     Padding="12,8">
                                                 <Grid>
@@ -1301,11 +1303,11 @@
                                                         <DataTemplate>
                                                             <Border x:Name="FornecedorBorder"
                                                                     Background="#992A2A2D"
-                                                                    CornerRadius="5"
-                                                                    Margin="0,5,0,5"
+                                                                    CornerRadius="0"
+                                                                    Margin="0"
                                                                     Padding="12,8"
-                                                                    BorderBrush="{StaticResource AccentColor}"
-                                                                    BorderThickness="1"
+                                                                    BorderBrush="{StaticResource BorderColor}"
+                                                                    BorderThickness="0,0,0,1"
                                                                     Cursor="Hand"
                                                                     MouseLeftButtonDown="FornecedorItem_Click">
                                                                 <Grid>
@@ -1414,10 +1416,11 @@
                                     </Border>
                                     
                                     <!-- Painel de Edição à Direita -->
-                                    <Border Grid.Column="1"
+                                    <Border x:Name="FornecedorInfoBorder"
+                                            Grid.Column="1"
                                             Background="#99252526"
                                             CornerRadius="10"
-                                            BorderBrush="{StaticResource AccentColor}"
+                                            BorderBrush="{StaticResource BorderColor}"
                                             BorderThickness="1"
                                             Padding="20"
                                             Margin="15,0,0,0">
@@ -1446,7 +1449,7 @@
                                             <TextBox x:Name="FornecedorNomeTextBox"
                                                     Background="#992A2A2D"
                                                     Foreground="{DynamicResource TextColor}"
-                                                    BorderBrush="{StaticResource AccentColor}"
+                                                    BorderBrush="{StaticResource BorderColor}"
                                                     BorderThickness="1"
                                                     Padding="8,6"
                                                     FontSize="12"
@@ -1468,7 +1471,7 @@
                                             <TextBox x:Name="FornecedorCodigoTextBox"
                                                     Background="#992A2A2D"
                                                     Foreground="{DynamicResource TextColor}"
-                                                    BorderBrush="{StaticResource AccentColor}"
+                                                    BorderBrush="{StaticResource BorderColor}"
                                                     BorderThickness="1"
                                                     Padding="8,6"
                                                     FontSize="12"
@@ -1491,7 +1494,7 @@
                                             <TextBox x:Name="FornecedorNaturezaTextBox"
                                                     Background="#992A2A2D"
                                                     Foreground="{DynamicResource TextColor}"
-                                                    BorderBrush="{StaticResource AccentColor}"
+                                                    BorderBrush="{StaticResource BorderColor}"
                                                     BorderThickness="1"
                                                     Padding="8,6"
                                                     FontSize="12"
@@ -1513,7 +1516,7 @@
                                             <TextBox x:Name="FornecedorEmailTextBox"
                                                     Background="#992A2A2D"
                                                     Foreground="{DynamicResource TextColor}"
-                                                    BorderBrush="{StaticResource AccentColor}"
+                                                    BorderBrush="{StaticResource BorderColor}"
                                                     BorderThickness="1"
                                                     Padding="8,6"
                                                     FontSize="12"
@@ -1557,7 +1560,7 @@
                                                         Grid.Row="1" Grid.Column="0"
                                                         Background="#992A2A2D"
                                                         Foreground="{DynamicResource TextColor}"
-                                                        BorderBrush="{StaticResource AccentColor}"
+                                                        BorderBrush="{StaticResource BorderColor}"
                                                         BorderThickness="1"
                                                         Padding="8,6"
                                                         FontSize="12"
@@ -1578,7 +1581,7 @@
                                                         Grid.Row="1" Grid.Column="2"
                                                         Background="#992A2A2D"
                                                         Foreground="{DynamicResource TextColor}"
-                                                        BorderBrush="{StaticResource AccentColor}"
+                                                        BorderBrush="{StaticResource BorderColor}"
                                                         BorderThickness="1"
                                                         Padding="8,6"
                                                         FontSize="12"
@@ -1612,9 +1615,10 @@
                                                 </Grid.ColumnDefinitions>
                                                 
                                                 <!-- CheckBox Administradora -->
-                                                <Border Grid.Row="0" Grid.Column="0"
+                                                <Border x:Name="AdministradoraOptionBorder"
+                                                        Grid.Row="0" Grid.Column="0"
                                                         Background="#992A2A2D"
-                                                        BorderBrush="{StaticResource AccentColor}"
+                                                        BorderBrush="{StaticResource BorderColor}"
                                                         BorderThickness="1"
                                                         CornerRadius="5"
                                                         Padding="10"
@@ -1656,9 +1660,10 @@
                                                 </Border>
                                                 
                                                 <!-- CheckBox Corretora -->
-                                                <Border Grid.Row="0" Grid.Column="1"
+                                                <Border x:Name="CorretoraOptionBorder"
+                                                        Grid.Row="0" Grid.Column="1"
                                                         Background="#992A2A2D"
-                                                        BorderBrush="{StaticResource AccentColor}"
+                                                        BorderBrush="{StaticResource BorderColor}"
                                                         BorderThickness="1"
                                                         CornerRadius="5"
                                                         Padding="10"
@@ -1700,9 +1705,10 @@
                                                 </Border>
                                                 
                                                 <!-- CheckBox Ativo -->
-                                                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                <Border x:Name="AtivoOptionBorder"
+                                                        Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                                         Background="#992A2A2D"
-                                                        BorderBrush="{StaticResource AccentColor}"
+                                                        BorderBrush="{StaticResource BorderColor}"
                                                         BorderThickness="1"
                                                         CornerRadius="5"
                                                         Padding="10"
@@ -2743,6 +2749,11 @@
                                 <!-- DATA E VALOR -->
                                 <!-- ============================================ -->
                                 <Grid x:Name="OpexInputsGrid" Grid.Row="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="38"/>
+                                        <RowDefinition Height="8"/>
+                                        <RowDefinition Height="38"/>
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="128"/>  <!-- Data -->
                                         <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
@@ -2753,12 +2764,6 @@
                                         <ColumnDefinition Width="*" MinWidth="100"/>    <!-- Botão Registrar/Atualizar -->
                                         <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
                                         <ColumnDefinition Width="112"/>  <!-- Botão Excluir -->
-                                        <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
-                                        <ColumnDefinition Width="135"/>  <!-- Botão Movimentar -->
-                                        <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
-                                        <ColumnDefinition Width="135"/>  <!-- Botão Importar -->
-                                        <ColumnDefinition Width="8"/>    <!-- Espaçamento -->
-                                        <ColumnDefinition Width="155"/>  <!-- Conferir Pagamentos -->
                                     </Grid.ColumnDefinitions>
                                     
                                     <!-- Box de Data - TextBox com Formatação Automática -->
@@ -3100,11 +3105,18 @@
                                         </Button.Style>
                                     </Button>
                                     
+                                    <!-- Ações secundárias em uma segunda linha responsiva -->
+                                    <StackPanel Grid.Row="2"
+                                                Grid.Column="0"
+                                                Grid.ColumnSpan="9"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Right">
                                     <!-- Botão Importar -->
                                     <Button x:Name="BtnImportar"
-                                            Grid.Column="10"
                                             Content="Importar"
+                                            Width="135"
                                             Height="38"
+                                            Margin="0,0,8,0"
                                             Background="{StaticResource PrimaryColor}"
                                             Foreground="White"
                                             BorderThickness="0"
@@ -3138,9 +3150,10 @@
                                     
                                     <!-- Botão Movimentar Registros -->
                                     <Button x:Name="BtnMovimentarRegistros"
-                                            Grid.Column="12"
                                             Content="Movimentar Registros"
+                                            Width="175"
                                             Height="38"
+                                            Margin="0,0,8,0"
                                             Background="{StaticResource PrimaryColor}"
                                             Foreground="White"
                                             BorderThickness="0"
@@ -3173,8 +3186,8 @@
                                     </Button>
                                     <!-- Botão Conferir Pagamentos -->
                                     <Button x:Name="BtnConferirPagamentos"
-                                            Grid.Column="14"
                                             Content="Conferir Pagamentos"
+                                            Width="185"
                                             Height="38"
                                             Background="#2D6D50"
                                             Foreground="White"
@@ -3206,6 +3219,7 @@
                                             </Style>
                                         </Button.Style>
                                     </Button>
+                                    </StackPanel>
                                 </Grid>
                                 
                                 <!-- ============================================ -->
