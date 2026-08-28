@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace HubFinanceiro;
 
@@ -26,14 +26,10 @@ public partial class MainWindow
         RemoverAcoesOpexV7();
         CriarGrupoAcoesOpex();
         ConfigurarCabecalhoTabelaOpex();
-
-        PagamentosItemsControl.ItemContainerGenerator.StatusChanged -= PagamentosOpexV8_StatusChanged;
-        PagamentosItemsControl.ItemContainerGenerator.StatusChanged += PagamentosOpexV8_StatusChanged;
+        ConfigurarTemplateEstavelPagamentosOpex();
 
         OpexLayoutGrid.PreviewKeyDown -= OpexLayoutGrid_V8PreviewKeyDown;
         OpexLayoutGrid.PreviewKeyDown += OpexLayoutGrid_V8PreviewKeyDown;
-
-        Dispatcher.BeginInvoke(new Action(AplicarLixeirasOpex), DispatcherPriority.Loaded);
     }
 
     private void RemoverAcoesOpexV7()
@@ -199,103 +195,45 @@ public partial class MainWindow
         return null;
     }
 
-    private void PagamentosOpexV8_StatusChanged(object? sender, EventArgs e)
+    private void ConfigurarTemplateEstavelPagamentosOpex()
     {
-        if (PagamentosItemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
+        var templateOriginal = PagamentosItemsControl.ItemTemplate;
+        if (templateOriginal == null)
             return;
 
-        Dispatcher.BeginInvoke(new Action(AplicarLixeirasOpex), DispatcherPriority.Loaded);
-    }
+        var raiz = new FrameworkElementFactory(typeof(DockPanel));
+        raiz.SetValue(DockPanel.LastChildFillProperty, true);
+        raiz.SetValue(FrameworkElement.HeightProperty, 38d);
 
-    private void AplicarLixeirasOpex()
-    {
-        ConfigurarCabecalhoTabelaOpex();
+        var botaoExcluir = new FrameworkElementFactory(typeof(Button));
+        botaoExcluir.SetValue(FrameworkElement.TagProperty, OpexExcluirRegistroTag);
+        botaoExcluir.SetValue(FrameworkElement.ToolTipProperty, "Excluir registro");
+        botaoExcluir.SetValue(FrameworkElement.StyleProperty, (Style)FindResource("CnabActionIconButtonStyle"));
+        botaoExcluir.SetValue(Control.ForegroundProperty, CriarBrushOpex("#D56A6A"));
+        botaoExcluir.SetValue(UIElement.FocusableProperty, false);
+        botaoExcluir.SetValue(DockPanel.DockProperty, Dock.Right);
+        botaoExcluir.AddHandler(Button.ClickEvent, new RoutedEventHandler(BtnExcluirPagamentoLinha_Click));
 
-        for (var i = 0; i < PagamentosItemsControl.Items.Count; i++)
+        var iconeExcluir = new FrameworkElementFactory(typeof(TextBlock));
+        iconeExcluir.SetValue(TextBlock.TextProperty, "\uE74D");
+        iconeExcluir.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Segoe MDL2 Assets"));
+        iconeExcluir.SetValue(TextBlock.FontSizeProperty, 17d);
+        iconeExcluir.SetValue(TextBlock.ForegroundProperty, CriarBrushOpex("#D56A6A"));
+        iconeExcluir.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        iconeExcluir.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        botaoExcluir.AppendChild(iconeExcluir);
+        raiz.AppendChild(botaoExcluir);
+
+        var conteudoOriginal = new FrameworkElementFactory(typeof(ContentPresenter));
+        conteudoOriginal.SetBinding(ContentPresenter.ContentProperty, new Binding());
+        conteudoOriginal.SetValue(ContentPresenter.ContentTemplateProperty, templateOriginal);
+        conteudoOriginal.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        raiz.AppendChild(conteudoOriginal);
+
+        PagamentosItemsControl.ItemTemplate = new DataTemplate(typeof(PrevisaoPagamento))
         {
-            if (PagamentosItemsControl.Items[i] is not PrevisaoPagamento pagamento)
-                continue;
-
-            var container = PagamentosItemsControl.ItemContainerGenerator.ContainerFromIndex(i);
-            if (container == null)
-                continue;
-
-            var gridLinha = EncontrarGridLinhaPagamento(container);
-            if (gridLinha == null)
-                continue;
-
-            ConfigurarLinhaPagamentoOpex(gridLinha, pagamento);
-        }
-    }
-
-    private static Grid? EncontrarGridLinhaPagamento(DependencyObject raiz)
-    {
-        if (raiz is Grid grid
-            && Math.Abs(grid.Height - 38d) < 0.1d
-            && grid.ColumnDefinitions.Count >= 8
-            && grid.DataContext is PrevisaoPagamento)
-        {
-            return grid;
-        }
-
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(raiz); i++)
-        {
-            var encontrado = EncontrarGridLinhaPagamento(VisualTreeHelper.GetChild(raiz, i));
-            if (encontrado != null)
-                return encontrado;
-        }
-
-        return null;
-    }
-
-    private void ConfigurarLinhaPagamentoOpex(Grid gridLinha, PrevisaoPagamento pagamento)
-    {
-        if (gridLinha.ColumnDefinitions.Count == 8)
-        {
-            gridLinha.ColumnDefinitions.Add(new ColumnDefinition
-            {
-                Width = new GridLength(40)
-            });
-
-            foreach (UIElement child in gridLinha.Children)
-            {
-                if (Grid.GetColumnSpan(child) == 8)
-                    Grid.SetColumnSpan(child, 9);
-            }
-        }
-
-        if (gridLinha.Children
-            .OfType<Button>()
-            .Any(button => Equals(button.Tag, OpexExcluirRegistroTag)))
-        {
-            return;
-        }
-
-        var corLixeira = CriarBrushOpex("#D56A6A");
-        var botaoExcluir = new Button
-        {
-            Tag = OpexExcluirRegistroTag,
-            DataContext = pagamento,
-            ToolTip = "Excluir registro",
-            Style = (Style)FindResource("CnabActionIconButtonStyle"),
-            Foreground = corLixeira,
-            Focusable = false,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Content = new TextBlock
-            {
-                Text = "\uE74D",
-                FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                FontSize = 17,
-                Foreground = corLixeira,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            }
+            VisualTree = raiz
         };
-
-        botaoExcluir.Click += BtnExcluirPagamentoLinha_Click;
-        Grid.SetColumn(botaoExcluir, 8);
-        gridLinha.Children.Add(botaoExcluir);
     }
 
     private void BtnExcluirPagamentoLinha_Click(object sender, RoutedEventArgs e)
