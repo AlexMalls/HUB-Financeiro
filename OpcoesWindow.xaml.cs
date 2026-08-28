@@ -14,6 +14,7 @@ public partial class OpcoesWindow : Window
     public OpcoesWindow()
     {
         InitializeComponent();
+        HubVisualStyleHelper.AplicarCheckBoxPadrao(DebugModeCheckBox);
         CarregarEstadoDebug();
         DebugService.EnabledChanged += DebugService_EnabledChanged;
         Closed += OpcoesWindow_Closed;
