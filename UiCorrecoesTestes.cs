@@ -6,6 +6,7 @@ public static class UiCorrecoesTestes
     {
         DeveFiltrarFornecedoresAtivosPorNome();
         DeveManterFornecedorSemEmailNaPesquisaMasBloquearSelecao();
+        DeveUsarMedidasDaTabelaOpexNaListaDeFornecedores();
         DeveIgnorarClientesCanceladosPorPadrao();
         DeveReservarLarguraSuficienteParaBotoesOpex();
     }
@@ -32,6 +33,16 @@ public static class UiCorrecoesTestes
 
         Assert(resultado.Count == 1, "fornecedor sem e-mail deve continuar visível na lista");
         Assert(!UiCorrecoesPolicy.FornecedorPodeReceberEmail(semEmail), "fornecedor sem e-mail deve ficar bloqueado para seleção");
+    }
+
+    private static void DeveUsarMedidasDaTabelaOpexNaListaDeFornecedores()
+    {
+        Assert(UiCorrecoesPolicy.AlturaCabecalhoFornecedorEmail == 45d,
+            "o cabeçalho da lista de fornecedores deve ter a mesma altura da tabela O.P.E.X.");
+        Assert(UiCorrecoesPolicy.AlturaLinhaFornecedorEmail == 38d,
+            "as linhas da lista de fornecedores devem ter a mesma altura da tabela O.P.E.X.");
+        Assert(UiCorrecoesPolicy.CabecalhoFornecedorEmail == "Nome do Fornecedor",
+            "a lista deve exibir o cabeçalho Nome do Fornecedor");
     }
 
     private static void DeveIgnorarClientesCanceladosPorPadrao()
