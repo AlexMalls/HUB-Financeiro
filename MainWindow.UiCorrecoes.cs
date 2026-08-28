@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace HubFinanceiro;
 
@@ -12,25 +11,17 @@ public partial class MainWindow
     private bool _aplicandoFiltroFornecedorEmail;
     private TextBox? _pesquisaFornecedorEmailTextBox;
     private TextBlock? _pesquisaFornecedorEmailPlaceholder;
+    private Style? _fornecedorEmailOpexStyle;
 
-    static MainWindow()
+    protected override void OnContentRendered(EventArgs e)
     {
-        EventManager.RegisterClassHandler(
-            typeof(MainWindow),
-            FrameworkElement.LoadedEvent,
-            new RoutedEventHandler(MainWindow_CorrecoesUi_Loaded),
-            true);
-    }
+        base.OnContentRendered(e);
 
-    private static void MainWindow_CorrecoesUi_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not MainWindow window || window._correcoesUiGeraisAplicadas)
+        if (_correcoesUiGeraisAplicadas)
             return;
 
-        window._correcoesUiGeraisAplicadas = true;
-        window.Dispatcher.BeginInvoke(
-            new Action(window.AplicarCorrecoesUiGerais),
-            DispatcherPriority.Loaded);
+        _correcoesUiGeraisAplicadas = true;
+        AplicarCorrecoesUiGerais();
     }
 
     private void AplicarCorrecoesUiGerais()
@@ -44,7 +35,10 @@ public partial class MainWindow
         if (FornecedorItemsControl == null)
             return;
 
+        _fornecedorEmailOpexStyle ??= CriarEstiloFornecedorEmailOpex();
+        FornecedorItemsControl.ItemContainerGenerator.StatusChanged -= FornecedorEmailContainers_StatusChanged;
         FornecedorItemsControl.ItemContainerGenerator.StatusChanged += FornecedorEmailContainers_StatusChanged;
+
         InserirPesquisaFornecedorEmail();
         AplicarEstadoVisualFornecedoresEmail();
     }
@@ -59,12 +53,13 @@ public partial class MainWindow
             return;
 
         scrollViewer.Content = null;
+        scrollViewer.Padding = new Thickness(0);
         scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
 
         var raiz = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            Margin = new Thickness(0, 0, 2, 0)
+            Margin = new Thickness(0)
         };
 
         var caixaPesquisa = new Border
@@ -73,7 +68,7 @@ public partial class MainWindow
             BorderBrush = NovaCor("#45454D"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(7),
-            Margin = new Thickness(0, 0, 6, 10)
+            Margin = new Thickness(0, 0, 0, 8)
         };
 
         var gridPesquisa = new Grid();
@@ -106,21 +101,20 @@ public partial class MainWindow
         caixaPesquisa.Child = gridPesquisa;
         raiz.Children.Add(caixaPesquisa);
 
-        var cabecalho = new Border
+        var cabecalho = new Grid
         {
-            Background = NovaCor("#252526"),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(38, 255, 255, 255)),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(12, 6, 12, 7),
-            Margin = new Thickness(0, 0, 6, 0),
-            Child = new TextBlock
-            {
-                Text = "Nome do Fornecedor",
-                Foreground = NovaCor("#A8A8B0"),
-                FontSize = 11,
-                FontWeight = FontWeights.SemiBold
-            }
+            Height = UiCorrecoesPolicy.AlturaCabecalhoFornecedorEmail,
+            Background = NovaCor("#992A2A2D")
         };
+        cabecalho.Children.Add(new TextBlock
+        {
+            Text = UiCorrecoesPolicy.CabecalhoFornecedorEmail,
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.Bold,
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(20, 0, 10, 0)
+        });
         raiz.Children.Add(cabecalho);
 
         FornecedorItemsControl.Margin = new Thickness(0);
@@ -165,8 +159,6 @@ public partial class MainWindow
         if (FornecedorItemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
             return;
 
-        // Caso o watcher de fornecedores recarregue a lista enquanto existe uma pesquisa,
-        // reaplica o termo para não perder o filtro visual.
         if (!_aplicandoFiltroFornecedorEmail
             && _pesquisaFornecedorEmailTextBox != null
             && !string.IsNullOrWhiteSpace(_pesquisaFornecedorEmailTextBox.Text))
@@ -191,6 +183,8 @@ public partial class MainWindow
         if (FornecedorItemsControl == null)
             return;
 
+        _fornecedorEmailOpexStyle ??= CriarEstiloFornecedorEmailOpex();
+
         for (var i = 0; i < FornecedorItemsControl.Items.Count; i++)
         {
             if (FornecedorItemsControl.Items[i] is not Fornecedor fornecedor)
@@ -206,15 +200,24 @@ public partial class MainWindow
 
             var habilitado = UiCorrecoesPolicy.FornecedorPodeReceberEmail(fornecedor);
 
-            toggle.HorizontalAlignment = HorizontalAlignment.Stretch;
-            toggle.HorizontalContentAlignment = HorizontalAlignment.Left;
-            toggle.Margin = new Thickness(0);
-            toggle.Padding = new Thickness(12, 10, 12, 10);
-            toggle.BorderBrush = new SolidColorBrush(Color.FromArgb(34, 255, 255, 255));
-            toggle.BorderThickness = new Thickness(0, 0, 0, 1);
+            // O XAML antigo define margem e estilo localmente. Limpamos esses valores
+            // para a linha assumir exatamente a geometria usada na tabela da O.P.E.X.
+            toggle.ClearValue(FrameworkElement.MarginProperty);
+            toggle.ClearValue(FrameworkElement.HeightProperty);
+            toggle.ClearValue(Control.PaddingProperty);
+            toggle.ClearValue(Control.BackgroundProperty);
+            toggle.ClearValue(Control.BorderBrushProperty);
+            toggle.ClearValue(Control.BorderThicknessProperty);
+            toggle.ClearValue(Control.FontSizeProperty);
+            toggle.ClearValue(Control.HorizontalContentAlignmentProperty);
+            toggle.ClearValue(Control.VerticalContentAlignmentProperty);
+            toggle.Style = _fornecedorEmailOpexStyle;
+
             toggle.IsEnabled = habilitado;
             toggle.Opacity = habilitado ? 1.0 : 0.34;
-            toggle.Cursor = habilitado ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow;
+            toggle.Cursor = habilitado
+                ? System.Windows.Input.Cursors.Hand
+                : System.Windows.Input.Cursors.Arrow;
             toggle.ToolTip = habilitado ? null : "Fornecedor sem e-mail cadastrado";
 
             if (!habilitado && toggle.IsChecked == true)
@@ -224,6 +227,58 @@ public partial class MainWindow
                     _fornecedorSelecionado = null;
             }
         }
+    }
+
+    private static Style CriarEstiloFornecedorEmailOpex()
+    {
+        var template = new ControlTemplate(typeof(ToggleButton));
+
+        var borda = new FrameworkElementFactory(typeof(Border));
+        borda.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Control.BackgroundProperty));
+        borda.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Control.BorderBrushProperty));
+        borda.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Control.BorderThicknessProperty));
+        borda.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Control.PaddingProperty));
+        borda.SetValue(UIElement.SnapsToDevicePixelsProperty, true);
+
+        var conteudo = new FrameworkElementFactory(typeof(ContentPresenter));
+        conteudo.SetValue(ContentPresenter.ContentProperty, new TemplateBindingExtension(ContentControl.ContentProperty));
+        conteudo.SetValue(ContentPresenter.ContentTemplateProperty, new TemplateBindingExtension(ContentControl.ContentTemplateProperty));
+        conteudo.SetValue(FrameworkElement.HorizontalAlignmentProperty, new TemplateBindingExtension(Control.HorizontalContentAlignmentProperty));
+        conteudo.SetValue(FrameworkElement.VerticalAlignmentProperty, new TemplateBindingExtension(Control.VerticalContentAlignmentProperty));
+        borda.AppendChild(conteudo);
+        template.VisualTree = borda;
+
+        var estilo = new Style(typeof(ToggleButton));
+        estilo.Setters.Add(new Setter(FrameworkElement.HeightProperty, UiCorrecoesPolicy.AlturaLinhaFornecedorEmail));
+        estilo.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+        estilo.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+        estilo.Setters.Add(new Setter(Control.BorderBrushProperty, new SolidColorBrush(Color.FromArgb(77, 45, 45, 48))));
+        estilo.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 0, 1)));
+        estilo.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(20, 0, 10, 0)));
+        estilo.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
+        estilo.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        estilo.Setters.Add(new Setter(Control.FontSizeProperty, 12d));
+        estilo.Setters.Add(new Setter(Control.FocusVisualStyleProperty, null));
+        estilo.Setters.Add(new Setter(Control.TemplateProperty, template));
+
+        var hover = new Trigger
+        {
+            Property = UIElement.IsMouseOverProperty,
+            Value = true
+        };
+        hover.Setters.Add(new Setter(Control.BackgroundProperty, NovaCor("#2A2A2D")));
+        estilo.Triggers.Add(hover);
+
+        var selecionado = new Trigger
+        {
+            Property = ToggleButton.IsCheckedProperty,
+            Value = true
+        };
+        selecionado.Setters.Add(new Setter(Control.BackgroundProperty, NovaCor("#3D2354")));
+        selecionado.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+        estilo.Triggers.Add(selecionado);
+
+        return estilo;
     }
 
     private void AjustarBotoesOpex()
