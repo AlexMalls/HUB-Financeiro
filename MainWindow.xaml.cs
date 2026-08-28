@@ -92,6 +92,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AplicarCorrecoesUiGerais();
         CnabPagamentosItemsControl.ItemsSource = _cnabPagamentos;
         CnabCriarPagamentosItemsControl.ItemsSource = _cnabCriacaoPagamentos;
         CnabCadastroColaboradoresItemsControl.ItemsSource = _cnabColaboradores;
