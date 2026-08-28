@@ -9,6 +9,7 @@ public static class UiCorrecoesOpexV9Testes
     public static void Executar()
     {
         DeveManterLixeiraEstavelAoRecarregarRegistrosOpex();
+        DeveUsarTemplateProprioNoMenuAcoesOpex();
     }
 
     private static void DeveManterLixeiraEstavelAoRecarregarRegistrosOpex()
@@ -43,6 +44,43 @@ public static class UiCorrecoesOpexV9Testes
                 "a lixeira deve continuar existindo imediatamente após recarregar a lista");
             Assert(ReferenceEquals(segundaLixeira!.DataContext, segundo),
                 "a lixeira recriada deve apontar para o novo registro sem depender de reinjeção posterior");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void DeveUsarTemplateProprioNoMenuAcoesOpex()
+    {
+        var window = new MainWindow();
+        try
+        {
+            var grupo = EncontrarDescendentePorTag<StackPanel>(window.OpexInputsGrid, "OpexV8Actions");
+            Assert(grupo != null && grupo.Children.Count == 2,
+                "o grupo compacto de ações O.P.E.X. deve existir");
+
+            var botaoAcoes = grupo!.Children[1] as Button;
+            Assert(botaoAcoes?.ContextMenu != null,
+                "o botão Ações O.P.E.X. deve possuir menu flutuante");
+
+            var menu = botaoAcoes!.ContextMenu!;
+            Assert(menu.ReadLocalValue(Control.TemplateProperty) != DependencyProperty.UnsetValue,
+                "o ContextMenu deve usar template próprio do HUB em vez do chrome padrão do Windows");
+
+            foreach (var item in menu.Items.OfType<MenuItem>())
+            {
+                var temTemplateProprio = item.Style?.Setters
+                    .OfType<Setter>()
+                    .Any(setter => setter.Property == Control.TemplateProperty) == true;
+
+                Assert(temTemplateProprio,
+                    $"a opção '{item.Header}' deve usar template próprio, sem faixa de ícones/check padrão do Windows");
+            }
+
+            var accent = ((SolidColorBrush)window.FindResource("AccentColor")).Color;
+            Assert(menu.BorderBrush is SolidColorBrush borda && borda.Color == accent,
+                "o menu deve usar o contorno de destaque roxo do HUB");
         }
         finally
         {
