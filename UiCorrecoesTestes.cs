@@ -6,7 +6,7 @@ public static class UiCorrecoesTestes
     {
         DeveFiltrarFornecedoresAtivosPorNome();
         DeveManterFornecedorSemEmailNaPesquisaMasBloquearSelecao();
-        DeveUsarMedidasDaTabelaOpexNaListaDeFornecedores();
+        DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores();
         DeveIgnorarClientesCanceladosPorPadrao();
         DeveReservarLarguraSuficienteParaBotoesOpex();
     }
@@ -35,14 +35,22 @@ public static class UiCorrecoesTestes
         Assert(!UiCorrecoesPolicy.FornecedorPodeReceberEmail(semEmail), "fornecedor sem e-mail deve ficar bloqueado para seleção");
     }
 
-    private static void DeveUsarMedidasDaTabelaOpexNaListaDeFornecedores()
+    private static void DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores()
     {
         Assert(UiCorrecoesPolicy.AlturaCabecalhoFornecedorEmail == 45d,
-            "o cabeçalho da lista de fornecedores deve ter a mesma altura da tabela O.P.E.X.");
+            "o cabeçalho deve ter os mesmos 45 px da tabela O.P.E.X.");
         Assert(UiCorrecoesPolicy.AlturaLinhaFornecedorEmail == 38d,
-            "as linhas da lista de fornecedores devem ter a mesma altura da tabela O.P.E.X.");
-        Assert(UiCorrecoesPolicy.CabecalhoFornecedorEmail == "Nome do Fornecedor",
-            "a lista deve exibir o cabeçalho Nome do Fornecedor");
+            "as linhas devem ter os mesmos 38 px da tabela O.P.E.X.");
+        Assert(UiCorrecoesPolicy.CabecalhoFornecedorEmail == "Fornecedor",
+            "a primeira coluna deve se chamar Fornecedor");
+        Assert(UiCorrecoesPolicy.CabecalhoEmailFornecedor == "E-mail",
+            "a segunda coluna deve se chamar E-mail");
+        Assert(UiCorrecoesPolicy.FundoTabelaFornecedorEmail == "#99252526",
+            "o fundo da tabela deve usar a mesma transparência da O.P.E.X.");
+        Assert(UiCorrecoesPolicy.FundoCabecalhoFornecedorEmail == "#992A2A2D",
+            "o cabeçalho deve usar o mesmo fundo semitransparente da O.P.E.X.");
+        Assert(UiCorrecoesPolicy.OpacidadeSeparadorFornecedorEmail == 0.3d,
+            "o separador das linhas deve usar opacidade 0,3 como a O.P.E.X.");
     }
 
     private static void DeveIgnorarClientesCanceladosPorPadrao()
