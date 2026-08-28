@@ -44,6 +44,7 @@ public class Program
             try
             {
                 UiCorrecoesTestes.Executar();
+                UiCorrecoesOpexV9Testes.Executar();
                 Environment.ExitCode = 0;
             }
             catch (Exception ex)
