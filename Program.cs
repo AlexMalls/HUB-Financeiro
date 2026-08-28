@@ -38,6 +38,23 @@ public class Program
 
             return;
         }
+
+        if (args.Any(arg => string.Equals(arg, "--validar-ajustes-ui", StringComparison.OrdinalIgnoreCase)))
+        {
+            try
+            {
+                UiCorrecoesTestes.Executar();
+                Environment.ExitCode = 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex);
+                Environment.ExitCode = 1;
+            }
+
+            return;
+        }
+
         var app = new App();
         app.InitializeComponent();
         DebugService.Initialize();
