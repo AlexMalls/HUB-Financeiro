@@ -5,8 +5,9 @@ public static class UiCorrecoesTestes
     public static void Executar()
     {
         DeveFiltrarFornecedoresAtivosPorNome();
-        DeveManterFornecedorSemEmailNaPesquisaMasBloquearSelecao();
+        DeveOcultarFornecedorSemEmailDaLista();
         DeveConstruirTabelaFornecedoresMesmoComPainelEmailOculto();
+        DeveAlinharLayoutComPesquisaFornecedores();
         DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores();
         DeveIgnorarClientesCanceladosPorPadrao();
         DeveReservarLarguraSuficienteParaBotoesOpex();
@@ -27,12 +28,12 @@ public static class UiCorrecoesTestes
         Assert(resultado[0].Nome == "Alpha Serviços", "a pesquisa deve filtrar pelo nome do fornecedor");
     }
 
-    private static void DeveManterFornecedorSemEmailNaPesquisaMasBloquearSelecao()
+    private static void DeveOcultarFornecedorSemEmailDaLista()
     {
         var semEmail = new Fornecedor { Nome = "Fornecedor sem e-mail", Email = "   ", Ativo = true };
         var resultado = UiCorrecoesPolicy.FiltrarFornecedoresEmail(new[] { semEmail }, string.Empty);
 
-        Assert(resultado.Count == 1, "fornecedor sem e-mail deve continuar visível na lista");
+        Assert(resultado.Count == 0, "fornecedor sem e-mail não deve aparecer na lista do Envio de E-mails");
         Assert(!UiCorrecoesPolicy.FornecedorPodeReceberEmail(semEmail), "fornecedor sem e-mail deve ficar bloqueado para seleção");
     }
 
@@ -55,6 +56,40 @@ public static class UiCorrecoesTestes
                 "o cabeçalho Fornecedor | E-mail deve existir antes de o painel ficar visível");
             Assert(window.FindName("FornecedorEmailTabelaBorder") is System.Windows.Controls.Border,
                 "a tabela no padrão O.P.E.X. deve existir antes de o painel ficar visível");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void DeveAlinharLayoutComPesquisaFornecedores()
+    {
+        if (System.Windows.Application.Current == null)
+        {
+            var app = new App();
+            app.InitializeComponent();
+        }
+
+        var window = new MainWindow();
+        try
+        {
+            window.EmailLayoutGrid.Visibility = System.Windows.Visibility.Visible;
+            window.EmailLayoutGrid.Measure(new System.Windows.Size(1000, 600));
+            window.EmailLayoutGrid.Arrange(new System.Windows.Rect(0, 0, 1000, 600));
+            window.EmailLayoutGrid.UpdateLayout();
+
+            var pesquisa = window.FindName("FornecedorEmailPesquisaBorder") as System.Windows.FrameworkElement;
+            var layout = window.FindName("LayoutEmailBorder") as System.Windows.FrameworkElement;
+
+            Assert(pesquisa != null, "o contêiner da pesquisa de fornecedores deve estar identificado");
+            Assert(layout != null, "o card Layout deve estar identificado");
+
+            var topoPesquisa = pesquisa!.TranslatePoint(new System.Windows.Point(0, 0), window.EmailLayoutGrid).Y;
+            var topoLayout = layout!.TranslatePoint(new System.Windows.Point(0, 0), window.EmailLayoutGrid).Y;
+
+            Assert(Math.Abs(topoPesquisa - topoLayout) <= 1d,
+                "o card Layout deve começar na mesma altura da pesquisa de fornecedores");
         }
         finally
         {
