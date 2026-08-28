@@ -9,6 +9,8 @@ public static class UiCorrecoesTestes
         DeveConstruirTabelaFornecedoresMesmoComPainelEmailOculto();
         DeveAlinharLayoutComPesquisaFornecedores();
         DeveUsarEstruturaVisualDaTabelaOpexNosFornecedores();
+        DeveReservarRoxoParaEstadosAtivosNaTelaFornecedores();
+        DeveManterAcoesOpexVisiveisEmLarguraCompacta();
         DeveIgnorarClientesCanceladosPorPadrao();
         DeveReservarLarguraSuficienteParaBotoesOpex();
     }
@@ -113,6 +115,120 @@ public static class UiCorrecoesTestes
             "o cabeçalho deve usar o mesmo fundo semitransparente da O.P.E.X.");
         Assert(UiCorrecoesPolicy.OpacidadeSeparadorFornecedorEmail == 0.3d,
             "o separador das linhas deve usar opacidade 0,3 como a O.P.E.X.");
+    }
+
+    private static void DeveReservarRoxoParaEstadosAtivosNaTelaFornecedores()
+    {
+        if (System.Windows.Application.Current == null)
+        {
+            var app = new App();
+            app.InitializeComponent();
+        }
+
+        var window = new MainWindow();
+        try
+        {
+            var contornos = new[]
+            {
+                window.FindName("FornecedoresListaBorder") as System.Windows.Controls.Border,
+                window.FindName("FornecedorPesquisaBorder") as System.Windows.Controls.Border,
+                window.FindName("FornecedorInfoBorder") as System.Windows.Controls.Border,
+                window.FindName("AdministradoraOptionBorder") as System.Windows.Controls.Border,
+                window.FindName("CorretoraOptionBorder") as System.Windows.Controls.Border,
+                window.FindName("AtivoOptionBorder") as System.Windows.Controls.Border
+            };
+
+            Assert(contornos.All(b => b != null),
+                "os principais contornos da tela Fornecedores devem estar identificados");
+
+            var corNeutra = ((System.Windows.Media.SolidColorBrush)window.FindResource("BorderColor")).Color;
+            foreach (var contorno in contornos)
+            {
+                Assert(contorno!.BorderBrush is System.Windows.Media.SolidColorBrush brush
+                    && brush.Color == corNeutra,
+                    "painéis e opções da tela Fornecedores devem usar borda neutra");
+            }
+
+            var campos = new[]
+            {
+                window.FornecedorNomeTextBox,
+                window.FornecedorCodigoTextBox,
+                window.FornecedorNaturezaTextBox,
+                window.FornecedorEmailTextBox,
+                window.FornecedorDiaPagamentoTextBox,
+                window.FornecedorTipoPagamentoTextBox
+            };
+
+            foreach (var campo in campos)
+            {
+                Assert(campo.BorderBrush is System.Windows.Media.SolidColorBrush brush
+                    && brush.Color == corNeutra,
+                    "campos do fornecedor devem usar borda neutra");
+            }
+
+            var linhaFornecedor = window.FornecedoresItemsControl.ItemTemplate.LoadContent()
+                as System.Windows.Controls.Border;
+            Assert(linhaFornecedor != null, "a linha de fornecedor deve continuar sendo um Border selecionável");
+            Assert(linhaFornecedor!.BorderThickness.Left == 0d
+                && linhaFornecedor.BorderThickness.Top == 0d
+                && linhaFornecedor.BorderThickness.Right == 0d
+                && linhaFornecedor.BorderThickness.Bottom == 1d,
+                "cada fornecedor deve usar apenas um separador inferior, sem caixa roxa completa");
+            Assert(linhaFornecedor.BorderBrush is System.Windows.Media.SolidColorBrush separador
+                && separador.Color == corNeutra,
+                "o separador da lista de fornecedores deve ser neutro");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void DeveManterAcoesOpexVisiveisEmLarguraCompacta()
+    {
+        if (System.Windows.Application.Current == null)
+        {
+            var app = new App();
+            app.InitializeComponent();
+        }
+
+        var window = new MainWindow();
+        try
+        {
+            const double larguraCompacta = 1000d;
+            window.OpexLayoutGrid.Visibility = System.Windows.Visibility.Visible;
+            window.OpexInputsGrid.Measure(new System.Windows.Size(larguraCompacta, double.PositiveInfinity));
+            var altura = Math.Max(84d, window.OpexInputsGrid.DesiredSize.Height);
+            window.OpexInputsGrid.Arrange(new System.Windows.Rect(0, 0, larguraCompacta, altura));
+            window.OpexInputsGrid.UpdateLayout();
+
+            var botoes = new System.Windows.FrameworkElement[]
+            {
+                window.BtnRegistrarPagamento,
+                window.BtnExcluirPagamento,
+                window.BtnImportar,
+                window.BtnMovimentarRegistros,
+                window.BtnConferirPagamentos
+            };
+
+            foreach (var botao in botoes)
+            {
+                var posicao = botao.TranslatePoint(new System.Windows.Point(0, 0), window.OpexInputsGrid);
+                Assert(posicao.X >= -1d && posicao.X + botao.ActualWidth <= larguraCompacta + 1d,
+                    $"o botão {botao.Name} deve ficar totalmente visível em uma área de 1000 px");
+            }
+
+            var topoRegistrar = window.BtnRegistrarPagamento
+                .TranslatePoint(new System.Windows.Point(0, 0), window.OpexInputsGrid).Y;
+            var topoImportar = window.BtnImportar
+                .TranslatePoint(new System.Windows.Point(0, 0), window.OpexInputsGrid).Y;
+            Assert(topoImportar > topoRegistrar + 1d,
+                "as ações secundárias da O.P.E.X. devem ocupar uma segunda linha");
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     private static void DeveIgnorarClientesCanceladosPorPadrao()
