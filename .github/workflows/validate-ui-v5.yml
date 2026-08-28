@@ -1,0 +1,25 @@
+name: Validate UI V5
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate-ui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore HubFinanceiro.csproj
+
+      - name: Build
+        run: dotnet build HubFinanceiro.csproj --configuration Debug --no-restore --nologo
+
+      - name: Run UI regression tests
+        run: .\bin\Debug\net8.0-windows\HubFinanceiro.exe --validar-ajustes-ui
