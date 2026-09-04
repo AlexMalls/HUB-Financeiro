@@ -92,6 +92,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AplicarCorrecoesUiGerais();
         CnabPagamentosItemsControl.ItemsSource = _cnabPagamentos;
         CnabCriarPagamentosItemsControl.ItemsSource = _cnabCriacaoPagamentos;
         CnabCadastroColaboradoresItemsControl.ItemsSource = _cnabColaboradores;
@@ -187,8 +188,7 @@ public partial class MainWindow : Window
                 _todosFornecedores = fornecedores.OrderBy(f => f.Nome).ToList();
                 FornecedoresItemsControl.ItemsSource = _todosFornecedores;
 
-                var apenasAtivos = fornecedores.Where(f => f.Ativo).OrderBy(f => f.Nome).ToList();
-                FornecedorItemsControl.ItemsSource = apenasAtivos;
+                AplicarFiltroFornecedorEmail();
 
                 _fornecedoresOpex = fornecedores.OrderBy(f => f.Nome).ToList();
                 OpexFornecedorComboBox.ItemsSource = _fornecedoresOpex;
@@ -1664,9 +1664,8 @@ public partial class MainWindow : Window
         // Aplica filtro de pesquisa se houver
         AplicarFiltroPesquisa();
         
-        // Atualiza a lista da aba Email (mostra apenas ativos)
-        var fornecedoresAtivos = _todosFornecedores.Where(f => f.Ativo).ToList();
-        FornecedorItemsControl.ItemsSource = fornecedoresAtivos;
+        // Atualiza a lista da aba Email (somente ativos com e-mail)
+        AplicarFiltroFornecedorEmail();
     }
 
     /// <summary>
@@ -3875,10 +3874,8 @@ public partial class MainWindow : Window
             FornecedoresItemsControl.ItemsSource = null;
             FornecedoresItemsControl.ItemsSource = _todosFornecedores;
             
-            // Atualiza apenas ativos (aba Email)
-            var apenasAtivos = fornecedores.Where(f => f.Ativo).OrderBy(f => f.Nome).ToList();
-            FornecedorItemsControl.ItemsSource = null;
-            FornecedorItemsControl.ItemsSource = apenasAtivos;
+            // Atualiza apenas ativos com e-mail (aba Email)
+            AplicarFiltroFornecedorEmail();
             
             // Atualiza OPEX
             _fornecedoresOpex = fornecedores.OrderBy(f => f.Nome).ToList();
