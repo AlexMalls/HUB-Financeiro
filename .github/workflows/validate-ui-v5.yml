@@ -24,3 +24,264 @@ jobs:
       - name: Run UI regression tests
         shell: pwsh
         run: dotnet .\bin\Debug\net8.0-windows\HubFinanceiro.dll --validar-ajustes-ui
+
+      - name: Create lightweight V10 installer
+        shell: pwsh
+        run: |
+          $dist = Join-Path $PWD 'dist-v10'
+          $filesDir = Join-Path $dist 'arquivos'
+          New-Item -ItemType Directory -Force -Path $filesDir | Out-Null
+
+          $files = @(
+            'MainWindow.OpexV8.cs',
+            'FornecedorIdentidadeService.cs',
+            'MainWindow.FornecedoresV10.cs',
+            'UiCorrecoesOpexV10Testes.cs',
+            'Program.cs',
+            'GlobalUsings.V10.cs',
+            'UiCorrecoesTestes.cs'
+          )
+
+          foreach ($file in $files) {
+            Copy-Item -LiteralPath (Join-Path $PWD $file) -Destination (Join-Path $filesDir $file) -Force
+          }
+
+          $installer = @'
+          @echo off
+          setlocal EnableExtensions EnableDelayedExpansion
+          title HUB Financeiro - Atualizacao V10
+
+          set "PROJECT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro"
+          set "PACKAGE=%~dp0arquivos"
+          set "APP=C:\Apps\HubFinanceiro\app"
+          set "BACKUP_ROOT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro_Backups"
+          set "FILES=MainWindow.OpexV8.cs FornecedorIdentidadeService.cs MainWindow.FornecedoresV10.cs UiCorrecoesOpexV10Testes.cs Program.cs GlobalUsings.V10.cs UiCorrecoesTestes.cs"
+          set "APP_EXISTED=0"
+
+          echo.
+          echo ========================================
+          echo   HUB FINANCEIRO - ATUALIZACAO V10
+          echo ========================================
+          echo.
+
+          tasklist /FI "IMAGENAME eq HubFinanceiro.exe" 2>NUL | find /I "HubFinanceiro.exe" >NUL
+          if not errorlevel 1 (
+              echo ERRO: O HUB Financeiro esta aberto.
+              echo Feche o programa e execute este instalador novamente.
+              echo.
+              pause
+              exit /b 1
+          )
+
+          if not exist "%PROJECT%\HubFinanceiro.csproj" (
+              echo ERRO: Projeto nao encontrado em:
+              echo "%PROJECT%"
+              echo.
+              pause
+              exit /b 1
+          )
+
+          if not exist "%PACKAGE%\" (
+              echo ERRO: Pasta de arquivos da atualizacao nao encontrada.
+              echo Extraia todo o ZIP antes de executar o instalador.
+              echo.
+              pause
+              exit /b 1
+          )
+
+          for %%F in (%FILES%) do (
+              if not exist "%PACKAGE%\%%F" (
+                  echo ERRO: Arquivo ausente no pacote: %%F
+                  echo.
+                  pause
+                  exit /b 1
+              )
+          )
+
+          if exist "C:\Dotnet\dotnet.exe" (
+              set "DOTNET=C:\Dotnet\dotnet.exe"
+          ) else (
+              where dotnet >NUL 2>&1
+              if errorlevel 1 (
+                  echo ERRO: .NET SDK nao encontrado.
+                  echo.
+                  pause
+                  exit /b 1
+              )
+              set "DOTNET=dotnet"
+          )
+
+          for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%I"
+          if not defined STAMP set "STAMP=backup"
+          set "BACKUP=%BACKUP_ROOT%\Atualizacao_V10_%STAMP%"
+          set "BACKUP_SOURCE=%BACKUP%\source"
+          set "BACKUP_APP=%BACKUP%\app"
+
+          mkdir "%BACKUP_SOURCE%" >NUL 2>&1
+          if errorlevel 1 goto :backup_error
+
+          echo [1/7] Criando backup...
+          for %%F in (%FILES%) do (
+              if exist "%PROJECT%\%%F" (
+                  copy /Y "%PROJECT%\%%F" "%BACKUP_SOURCE%\%%F" >NUL
+                  if errorlevel 1 goto :backup_error
+              ) else (
+                  type NUL > "%BACKUP_SOURCE%\%%F.__novo__"
+              )
+          )
+
+          if exist "%APP%\" (
+              set "APP_EXISTED=1"
+              mkdir "%BACKUP_APP%" >NUL 2>&1
+              if errorlevel 1 goto :backup_error
+              robocopy "%APP%" "%BACKUP_APP%" /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS /NP >NUL
+              if errorlevel 8 goto :backup_error
+          )
+
+          echo [2/7] Instalando os arquivos V10...
+          for %%F in (%FILES%) do (
+              copy /Y "%PACKAGE%\%%F" "%PROJECT%\%%F" >NUL
+              if errorlevel 1 goto :install_error
+          )
+
+          pushd "%PROJECT%"
+          if errorlevel 1 goto :install_error
+
+          echo [3/7] Limpando build anterior...
+          "%DOTNET%" clean HubFinanceiro.csproj --configuration Release --nologo
+          if errorlevel 1 goto :build_error_popd
+
+          echo [4/7] Restaurando dependencias...
+          "%DOTNET%" restore HubFinanceiro.csproj
+          if errorlevel 1 goto :build_error_popd
+
+          echo [5/7] Compilando e validando V10...
+          "%DOTNET%" build HubFinanceiro.csproj --configuration Release --no-restore --nologo
+          if errorlevel 1 goto :build_error_popd
+
+          if not exist "bin\Release\net8.0-windows\HubFinanceiro.dll" goto :build_error_popd
+          "%DOTNET%" "bin\Release\net8.0-windows\HubFinanceiro.dll" --validar-ajustes-ui
+          if errorlevel 1 goto :test_error_popd
+
+          echo [6/7] Publicando aplicacao...
+          "%DOTNET%" publish HubFinanceiro.csproj --configuration Release --output "%APP%" --self-contained false --no-restore /p:PublishReadyToRun=false /p:PublishSingleFile=false --nologo
+          if errorlevel 1 goto :publish_error_popd
+
+          popd
+
+          echo [7/7] Validando versao publicada...
+          if not exist "%APP%\HubFinanceiro.exe" goto :publish_error
+          if not exist "%APP%\HubFinanceiro.dll" goto :publish_error
+          if not exist "%APP%\tessdata\por.traineddata" goto :publish_error
+          "%DOTNET%" "%APP%\HubFinanceiro.dll" --validar-ajustes-ui
+          if errorlevel 1 goto :publish_error
+
+          echo.
+          echo ========================================
+          echo   ATUALIZACAO V10 CONCLUIDA COM SUCESSO
+          echo ========================================
+          echo.
+          echo Projeto: "%PROJECT%"
+          echo Aplicacao: "%APP%"
+          echo Backup: "%BACKUP%"
+          echo.
+          pause
+          exit /b 0
+
+          :build_error_popd
+          popd
+          echo.
+          echo ERRO: Falha ao compilar a atualizacao V10.
+          goto :rollback
+
+          :test_error_popd
+          popd
+          echo.
+          echo ERRO: A validacao automatica da V10 falhou.
+          goto :rollback
+
+          :publish_error_popd
+          popd
+          echo.
+          echo ERRO: Falha ao publicar a V10.
+          goto :rollback
+
+          :publish_error
+          echo.
+          echo ERRO: A versao publicada nao passou na validacao.
+          goto :rollback
+
+          :install_error
+          echo.
+          echo ERRO: Falha ao copiar os arquivos da V10.
+          goto :rollback
+
+          :backup_error
+          echo.
+          echo ERRO: Nao foi possivel criar o backup.
+          echo Nenhuma atualizacao foi concluida.
+          echo.
+          pause
+          exit /b 1
+
+          :rollback
+          echo.
+          echo Restaurando arquivos do projeto...
+          for %%F in (%FILES%) do (
+              if exist "%BACKUP_SOURCE%\%%F.__novo__" (
+                  del /Q "%PROJECT%\%%F" >NUL 2>&1
+              ) else if exist "%BACKUP_SOURCE%\%%F" (
+                  copy /Y "%BACKUP_SOURCE%\%%F" "%PROJECT%\%%F" >NUL
+              )
+          )
+
+          echo Restaurando aplicacao publicada...
+          if exist "%APP%\" rmdir /S /Q "%APP%" >NUL 2>&1
+          if "%APP_EXISTED%"=="1" (
+              mkdir "%APP%" >NUL 2>&1
+              robocopy "%BACKUP_APP%" "%APP%" /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS /NP >NUL
+              if errorlevel 8 (
+                  echo ATENCAO: Falha ao restaurar automaticamente a aplicacao publicada.
+                  echo O backup permanece em "%BACKUP_APP%".
+              ) else (
+                  echo Versao anterior restaurada.
+              )
+          ) else (
+              echo Nao havia publicacao anterior. A pasta criada foi removida.
+          )
+
+          echo.
+          echo A atualizacao nao foi aplicada.
+          echo Backup preservado em: "%BACKUP%"
+          echo.
+          pause
+          exit /b 1
+          '@
+
+          [System.IO.File]::WriteAllText(
+            (Join-Path $dist 'INSTALAR_UI_V10_LEVE.cmd'),
+            ($installer -replace "`n", "`r`n"),
+            [System.Text.UTF8Encoding]::new($false))
+
+          $readme = @'
+          HUB Financeiro - Atualizacao UI V10
+
+          1. Extraia todo o ZIP.
+          2. Feche o HUB Financeiro.
+          3. Execute INSTALAR_UI_V10_LEVE.cmd.
+
+          A V10 atualiza o menu Acoes O.P.E.X. e permite fornecedores sem codigo visivel, usando uma identidade interna oculta de 9 digitos.
+          O instalador faz backup, build, testes, publicacao e rollback automatico em caso de falha.
+          '@
+          [System.IO.File]::WriteAllText(
+            (Join-Path $dist 'LEIA-ME.txt'),
+            ($readme -replace "`n", "`r`n"),
+            [System.Text.UTF8Encoding]::new($false))
+
+      - name: Upload lightweight V10 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: HUB-Financeiro-UI-V10-Leve
+          path: dist-v10
+          if-no-files-found: error
+          retention-days: 7
