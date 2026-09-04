@@ -221,18 +221,23 @@ public static class UiCorrecoesTestes
 
             Assert(cabecalhos.SequenceEqual(new[]
                 {
+                    "Provisionar Pagamentos",
+                    "Desprovisionar Pagamento",
+                    "Liquidar Pagamentos",
+                    "Relatório de Pagamentos",
                     "Importar",
-                    "Movimentar Registros",
                     "Conferir Pagamentos"
                 }),
-                "o menu deve conter Importar, Movimentar Registros e Conferir Pagamentos nessa ordem");
+                "o menu deve conter as quatro movimentações antes de Importar e Conferir Pagamentos");
+            Assert(!cabecalhos.Contains("Movimentar Registros"),
+                "Movimentar Registros não deve permanecer no menu");
 
             Assert(window.BtnExcluirPagamento.Parent == null,
                 "o botão Excluir Registro antigo não deve permanecer na barra da O.P.E.X.");
             Assert(window.BtnImportar.Parent == null
                 && window.BtnMovimentarRegistros.Parent == null
                 && window.BtnConferirPagamentos.Parent == null,
-                "as três ações secundárias antigas não devem permanecer expostas na barra");
+                "as ações secundárias antigas não devem permanecer expostas na barra");
         }
         finally
         {
