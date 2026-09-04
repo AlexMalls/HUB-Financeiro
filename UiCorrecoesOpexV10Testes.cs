@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,7 +9,8 @@ public static class UiCorrecoesOpexV10Testes
     public static void Executar()
     {
         DeveExibirAcoesOpexNaOrdemAprovada();
-        DevePrepararFornecedorParaCodigoOpcionalComIdInterno();
+        DevePermitirCodigoVazioComIdInternoUnicoEPersistente();
+        DeveHabilitarCadastroSemCodigoVisivel();
     }
 
     private static void DeveExibirAcoesOpexNaOrdemAprovada()
@@ -58,25 +58,42 @@ public static class UiCorrecoesOpexV10Testes
         }
     }
 
-    private static void DevePrepararFornecedorParaCodigoOpcionalComIdInterno()
+    private static void DevePermitirCodigoVazioComIdInternoUnicoEPersistente()
     {
-        var propriedadeId = typeof(Fornecedor).GetProperty("IdInterno", BindingFlags.Instance | BindingFlags.Public);
-        Assert(propriedadeId?.PropertyType == typeof(int),
-            "Fornecedor deve possuir IdInterno inteiro e persistente");
+        var semCodigoA = new Fornecedor { Nome = "Fornecedor sem código A", Codigo = 0, Ativo = true };
+        var semCodigoB = new Fornecedor { Nome = "Fornecedor sem código B", Codigo = 0, Ativo = true };
+        var codigoRealNoveDigitos = new Fornecedor { Nome = "Fornecedor real", Codigo = 123456789, Ativo = true };
+        var fornecedores = new List<Fornecedor> { semCodigoA, semCodigoB, codigoRealNoveDigitos };
+        var registros = new List<FornecedorIdentidadeRegistro>();
 
-        var propriedadePagamentoId = typeof(PrevisaoPagamento).GetProperty("FornecedorIdInterno", BindingFlags.Instance | BindingFlags.Public);
-        Assert(propriedadePagamentoId?.PropertyType == typeof(int),
-            "PrevisaoPagamento deve guardar o IdInterno do fornecedor para preservar o vínculo quando o código visível estiver vazio ou mudar");
+        var ids = FornecedorIdentidadeService.Reconciliar(fornecedores, registros, out bool alterado);
+        Assert(alterado, "a primeira reconciliação deve criar identidades internas");
+        Assert(FornecedorIdentidadeService.IdInternoValido(ids[semCodigoA]),
+            "o fornecedor sem código deve receber ID interno de 9 dígitos");
+        Assert(FornecedorIdentidadeService.IdInternoValido(ids[semCodigoB]),
+            "o segundo fornecedor sem código deve receber ID interno de 9 dígitos");
+        Assert(ids[semCodigoA] != ids[semCodigoB],
+            "fornecedores sem código devem receber IDs internos diferentes");
+        Assert(ids[semCodigoA] != codigoRealNoveDigitos.Codigo && ids[semCodigoB] != codigoRealNoveDigitos.Codigo,
+            "o ID interno não pode colidir com um código real existente de 9 dígitos");
+        Assert(FornecedorIdentidadeService.CodigoVisivel(semCodigoA.Codigo) == string.Empty,
+            "código 0 deve continuar totalmente vazio para o usuário");
 
+        int idOriginal = ids[semCodigoA];
+        semCodigoA.Codigo = 339;
+
+        var idsDepoisDoCodigo = FornecedorIdentidadeService.Reconciliar(fornecedores, registros, out _);
+        Assert(idsDepoisDoCodigo[semCodigoA] == idOriginal,
+            "adicionar um código real depois não pode trocar a identidade interna do fornecedor");
+    }
+
+    private static void DeveHabilitarCadastroSemCodigoVisivel()
+    {
         var window = new MainWindow();
         try
         {
-            window.FornecedorNomeTextBox.Text = "Fornecedor sem código";
             window.FornecedorCodigoTextBox.Text = string.Empty;
-
-            var validar = typeof(MainWindow).GetMethod("ValidarBotaoCadastro", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert(validar != null, "a validação do cadastro de fornecedor deve existir");
-            validar!.Invoke(window, null);
+            window.FornecedorNomeTextBox.Text = "Fornecedor sem código";
 
             Assert(window.BtnCadastrarFornecedor.IsEnabled,
                 "o fornecedor deve poder ser salvo apenas com o nome, mesmo sem código visível");
