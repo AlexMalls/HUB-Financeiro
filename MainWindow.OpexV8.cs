@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -28,6 +30,7 @@ public partial class MainWindow
         CriarGrupoAcoesOpex();
         ConfigurarCabecalhoTabelaOpex();
         ConfigurarTemplateEstavelPagamentosOpex();
+        ConfigurarFornecedoresV10();
 
         OpexLayoutGrid.PreviewKeyDown -= OpexLayoutGrid_V8PreviewKeyDown;
         OpexLayoutGrid.PreviewKeyDown += OpexLayoutGrid_V8PreviewKeyDown;
@@ -109,7 +112,7 @@ public partial class MainWindow
             BorderBrush = (Brush)FindResource("AccentColor"),
             BorderThickness = new Thickness(1),
             Padding = new Thickness(5),
-            MinWidth = 215,
+            MinWidth = 230,
             HasDropShadow = true,
             Placement = PlacementMode.Bottom,
             StaysOpen = false,
@@ -125,8 +128,11 @@ public partial class MainWindow
         estiloOpcao.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
         estiloOpcao.Setters.Add(new Setter(Control.TemplateProperty, CriarTemplateItemMenuOpex()));
 
+        menu.Items.Add(CriarOpcaoMenuOpex("Provisionar Pagamentos", ExecutarProvisionarPagamentosOpexV10, estiloOpcao));
+        menu.Items.Add(CriarOpcaoMenuOpex("Desprovisionar Pagamento", ExecutarDesprovisionarPagamentoOpexV10, estiloOpcao));
+        menu.Items.Add(CriarOpcaoMenuOpex("Liquidar Pagamentos", ExecutarLiquidarPagamentosOpexV10, estiloOpcao));
+        menu.Items.Add(CriarOpcaoMenuOpex("Relatório de Pagamentos", ExecutarRelatorioPagamentosOpexV10, estiloOpcao));
         menu.Items.Add(CriarOpcaoMenuOpex("Importar", BtnImportar, estiloOpcao));
-        menu.Items.Add(CriarOpcaoMenuOpex("Movimentar Registros", BtnMovimentarRegistros, estiloOpcao));
         menu.Items.Add(CriarOpcaoMenuOpex("Conferir Pagamentos", BtnConferirPagamentos, estiloOpcao));
 
         return menu;
@@ -239,6 +245,18 @@ public partial class MainWindow
         item.Click += (_, _) =>
             acaoOriginal.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, acaoOriginal));
 
+        return item;
+    }
+
+    private static MenuItem CriarOpcaoMenuOpex(string texto, Action acao, Style estilo)
+    {
+        var item = new MenuItem
+        {
+            Header = texto,
+            Style = estilo
+        };
+
+        item.Click += (_, _) => acao();
         return item;
     }
 
@@ -394,6 +412,244 @@ public partial class MainWindow
         catch (Exception ex)
         {
             MostrarErro("Erro ao excluir pagamento", ex);
+        }
+    }
+
+    private void ExecutarProvisionarPagamentosOpexV10()
+    {
+        try
+        {
+            if (!ValidarPagamentosNoEscopoOpexV10())
+            {
+                CustomMessageBox.ShowInformation("Não há registros programados para o próximo escopo de pagamento.");
+                return;
+            }
+
+            var janela = new ProvisionamentoWindow { Owner = this };
+            janela.ShowDialog();
+            RecarregarPagamentos();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError($"Erro ao abrir provisionamento: {ex.Message}");
+        }
+    }
+
+    private void ExecutarDesprovisionarPagamentoOpexV10()
+    {
+        try
+        {
+            var pagamentos = CarregarPrevisoesPagamento();
+            if (!pagamentos.Any(p => p.Status == "No Banco"))
+            {
+                CustomMessageBox.ShowInformation("Não há pagamentos provisionados para reverter.");
+                return;
+            }
+
+            var janela = new DeprovisionamentoWindow { Owner = this };
+            janela.ShowDialog();
+            RecarregarPagamentos();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError($"Erro ao abrir desprovisionamento: {ex.Message}");
+        }
+    }
+
+    private bool ValidarPagamentosNoEscopoOpexV10()
+    {
+        try
+        {
+            var pagamentos = CarregarPrevisoesPagamento();
+            var (dataInicio, dataFim) = CalcularProximoEscopoOpexV10(DateTime.Now);
+
+            return pagamentos.Any(p =>
+                p.Status == "Pendente"
+                && p.DataPagamento.Date >= dataInicio.Date
+                && p.DataPagamento.Date < dataFim.Date);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private static (DateTime inicio, DateTime fim) CalcularProximoEscopoOpexV10(DateTime dataAtual)
+    {
+        int ultimoDiaMes = DateTime.DaysInMonth(dataAtual.Year, dataAtual.Month);
+        int[] marcos = { 1, 5, 10, 15, 20, 25, ultimoDiaMes };
+
+        for (var i = 0; i < marcos.Length; i++)
+        {
+            if (marcos[i] < dataAtual.Day)
+                continue;
+
+            if (i + 1 < marcos.Length)
+            {
+                return (
+                    dataAtual.Date,
+                    new DateTime(dataAtual.Year, dataAtual.Month, marcos[i + 1]));
+            }
+
+            var proximoMes = new DateTime(dataAtual.Year, dataAtual.Month, 1).AddMonths(1);
+            return (dataAtual.Date, new DateTime(proximoMes.Year, proximoMes.Month, 5));
+        }
+
+        var mesSeguinte = new DateTime(dataAtual.Year, dataAtual.Month, 1).AddMonths(1);
+        return (
+            new DateTime(mesSeguinte.Year, mesSeguinte.Month, 1),
+            new DateTime(mesSeguinte.Year, mesSeguinte.Month, 5));
+    }
+
+    private void ExecutarLiquidarPagamentosOpexV10()
+    {
+        try
+        {
+            var provisionados = CarregarPrevisoesPagamento()
+                .Where(p => p.Status == "No Banco" && p.DataProvisionamento.HasValue)
+                .ToList();
+
+            if (!provisionados.Any())
+            {
+                CustomMessageBox.ShowInformation(
+                    "Não há pagamentos provisionados para liquidar.",
+                    "Informação");
+                return;
+            }
+
+            var datas = provisionados
+                .GroupBy(p => p.DataProvisionamento!.Value.Date)
+                .OrderBy(g => g.Key)
+                .Select(g => new DataProvisionamentoInfo
+                {
+                    Data = g.Key,
+                    Quantidade = g.Count(),
+                    Total = g.Sum(p => p.Valor)
+                })
+                .ToList();
+
+            var selecionarDataWindow = new SelecionarDataProvisionamentoWindow(datas)
+            {
+                Owner = this
+            };
+
+            if (selecionarDataWindow.ShowDialog() != true || !selecionarDataWindow.DataSelecionada.HasValue)
+                return;
+
+            var liquidacaoWindow = new LiquidacaoWindow(selecionarDataWindow.DataSelecionada.Value)
+            {
+                Owner = this
+            };
+            liquidacaoWindow.ShowDialog();
+            RecarregarPagamentos();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError($"Erro ao processar liquidação: {ex.Message}");
+        }
+    }
+
+    private void ExecutarRelatorioPagamentosOpexV10()
+    {
+        try
+        {
+            var provisionados = CarregarPrevisoesPagamento()
+                .Where(p => p.Status == "No Banco" && p.DataProvisionamento.HasValue)
+                .ToList();
+
+            if (!provisionados.Any())
+            {
+                CustomMessageBox.ShowInformation("Não há pagamentos com status \"No Banco\" para gerar relatório.");
+                return;
+            }
+
+            var datas = provisionados
+                .GroupBy(p => p.DataProvisionamento!.Value.Date)
+                .OrderBy(g => g.Key)
+                .Select(g => new DataProvisionamentoInfo
+                {
+                    Data = g.Key,
+                    Quantidade = g.Count(),
+                    Total = g.Sum(p => p.Valor)
+                })
+                .ToList();
+
+            var selecionarDataWindow = new SelecionarDataProvisionamentoWindow(datas)
+            {
+                Owner = this
+            };
+
+            if (selecionarDataWindow.ShowDialog() != true || !selecionarDataWindow.DataSelecionada.HasValue)
+                return;
+
+            var dataSelecionada = selecionarDataWindow.DataSelecionada.Value.Date;
+            var pagamentosData = provisionados
+                .Where(p => p.DataProvisionamento!.Value.Date == dataSelecionada)
+                .ToList();
+
+            GerarRelatorioPagamentosOpexV10(
+                dataSelecionada,
+                pagamentosData.Where(p => p.Empresa == "ADM").OrderBy(p => p.NomeFornecedor).ToList(),
+                pagamentosData.Where(p => p.Empresa == "COR").OrderBy(p => p.NomeFornecedor).ToList());
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError($"Erro ao gerar relatório: {ex.Message}");
+        }
+    }
+
+    private static void GerarRelatorioPagamentosOpexV10(
+        DateTime data,
+        List<PrevisaoPagamento> admPagamentos,
+        List<PrevisaoPagamento> corPagamentos)
+    {
+        try
+        {
+            var relatorio = new StringBuilder();
+            relatorio.AppendLine("*Pagamentos Administradora*");
+            relatorio.AppendLine($"*{data:dd/MM}*");
+            relatorio.AppendLine();
+
+            if (admPagamentos.Any())
+            {
+                foreach (var pagamento in admPagamentos)
+                    relatorio.AppendLine($"{pagamento.NomeFornecedor} - R$ {pagamento.Valor:N2}");
+            }
+            else
+            {
+                relatorio.AppendLine("(Nenhum pagamento)");
+            }
+
+            relatorio.AppendLine();
+            relatorio.AppendLine();
+            relatorio.AppendLine("*Pagamentos Corretora*");
+            relatorio.AppendLine($"*{data:dd/MM}*");
+            relatorio.AppendLine();
+
+            if (corPagamentos.Any())
+            {
+                foreach (var pagamento in corPagamentos)
+                    relatorio.AppendLine($"{pagamento.NomeFornecedor} - R$ {pagamento.Valor:N2}");
+            }
+            else
+            {
+                relatorio.AppendLine("(Nenhum pagamento)");
+            }
+
+            string caminhoCompleto = Path.Combine(
+                Path.GetTempPath(),
+                $"Relatorio_Pagamentos_{data:yyyy-MM-dd}.txt");
+
+            File.WriteAllText(caminhoCompleto, relatorio.ToString(), Encoding.UTF8);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = caminhoCompleto,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.ShowError($"Erro ao criar arquivo de relatório: {ex.Message}");
         }
     }
 
