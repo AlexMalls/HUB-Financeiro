@@ -263,11 +263,14 @@ public partial class MainWindow
 
         var raiz = new FrameworkElementFactory(typeof(DockPanel));
         raiz.SetValue(DockPanel.LastChildFillProperty, true);
+        raiz.SetValue(Panel.BackgroundProperty, CriarBrushOpex("#992A2A2D"));
+        raiz.SetValue(FrameworkElement.TagProperty, "FornecedorLinhaV12Surface");
 
         var botaoExcluir = new FrameworkElementFactory(typeof(Button));
         botaoExcluir.SetValue(FrameworkElement.ToolTipProperty, "Excluir fornecedor");
         botaoExcluir.SetValue(FrameworkElement.StyleProperty, (Style)FindResource("CnabActionIconButtonStyle"));
         botaoExcluir.SetValue(Control.ForegroundProperty, CriarBrushOpex("#D56A6A"));
+        botaoExcluir.SetValue(Control.BackgroundProperty, Brushes.Transparent);
         botaoExcluir.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         botaoExcluir.SetValue(FrameworkElement.MarginProperty, new Thickness(6, 0, 4, 0));
         botaoExcluir.SetValue(UIElement.FocusableProperty, false);
