@@ -168,21 +168,35 @@ public static class UiCorrecoesTestes
                     "campos do fornecedor devem usar borda neutra");
             }
 
-            // A V11 envolve a linha original em um template que adiciona a lixeira.
-            // Validamos aqui a definição XAML da linha original, sem depender do template
-            // programático já composto em tempo de execução.
-            string xaml = File.ReadAllText("MainWindow.xaml");
-            int inicioLinha = xaml.IndexOf("x:Name=\"FornecedorBorder\"", StringComparison.Ordinal);
-            int fimLinha = inicioLinha >= 0
-                ? xaml.IndexOf("MouseLeftButtonDown=\"FornecedorItem_Click\"", inicioLinha, StringComparison.Ordinal)
-                : -1;
-            Assert(inicioLinha >= 0 && fimLinha > inicioLinha,
-                "a linha de fornecedor deve continuar identificada no XAML");
+            var fornecedor = new Fornecedor
+            {
+                Nome = "Fornecedor visual teste",
+                Codigo = 998877,
+                Ativo = true
+            };
 
-            string definicaoLinha = xaml.Substring(inicioLinha, fimLinha - inicioLinha);
-            Assert(definicaoLinha.Contains("BorderThickness=\"0,0,0,1\"", StringComparison.Ordinal),
+            window.FornecedoresLayoutGrid.Visibility = System.Windows.Visibility.Visible;
+            window.FornecedoresItemsControl.ItemsSource = new[] { fornecedor };
+            window.FornecedoresLayoutGrid.Measure(new System.Windows.Size(1000, 650));
+            window.FornecedoresLayoutGrid.Arrange(new System.Windows.Rect(0, 0, 1000, 650));
+            window.FornecedoresLayoutGrid.UpdateLayout();
+
+            var container = window.FornecedoresItemsControl.ItemContainerGenerator.ContainerFromIndex(0);
+            Assert(container != null, "a linha de fornecedor deve gerar um container visual");
+
+            var linhaFornecedor = EncontrarDescendente<System.Windows.Controls.Border>(
+                container!,
+                border => ReferenceEquals(border.DataContext, fornecedor)
+                    && border.Cursor == System.Windows.Input.Cursors.Hand);
+
+            Assert(linhaFornecedor != null, "a linha original do fornecedor deve continuar selecionável");
+            Assert(linhaFornecedor!.BorderThickness.Left == 0d
+                && linhaFornecedor.BorderThickness.Top == 0d
+                && linhaFornecedor.BorderThickness.Right == 0d
+                && linhaFornecedor.BorderThickness.Bottom == 1d,
                 "cada fornecedor deve usar apenas um separador inferior, sem caixa roxa completa");
-            Assert(definicaoLinha.Contains("BorderBrush=\"{StaticResource BorderColor}\"", StringComparison.Ordinal),
+            Assert(linhaFornecedor.BorderBrush is System.Windows.Media.SolidColorBrush separador
+                && separador.Color == corNeutra,
                 "o separador da lista de fornecedores deve ser neutro");
         }
         finally
@@ -363,14 +377,20 @@ public static class UiCorrecoesTestes
 
     private static T? EncontrarDescendentePorTag<T>(System.Windows.DependencyObject raiz, object tag)
         where T : System.Windows.FrameworkElement
+        => EncontrarDescendente<T>(raiz, elemento => Equals(elemento.Tag, tag));
+
+    private static T? EncontrarDescendente<T>(
+        System.Windows.DependencyObject raiz,
+        Func<T, bool> predicado)
+        where T : System.Windows.DependencyObject
     {
         for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(raiz); i++)
         {
             var filho = System.Windows.Media.VisualTreeHelper.GetChild(raiz, i);
-            if (filho is T elemento && Equals(elemento.Tag, tag))
+            if (filho is T elemento && predicado(elemento))
                 return elemento;
 
-            var encontrado = EncontrarDescendentePorTag<T>(filho, tag);
+            var encontrado = EncontrarDescendente<T>(filho, predicado);
             if (encontrado != null)
                 return encontrado;
         }
