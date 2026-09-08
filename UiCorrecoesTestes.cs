@@ -168,16 +168,21 @@ public static class UiCorrecoesTestes
                     "campos do fornecedor devem usar borda neutra");
             }
 
-            var linhaFornecedor = window.FornecedoresItemsControl.ItemTemplate.LoadContent()
-                as System.Windows.Controls.Border;
-            Assert(linhaFornecedor != null, "a linha de fornecedor deve continuar sendo um Border selecionável");
-            Assert(linhaFornecedor!.BorderThickness.Left == 0d
-                && linhaFornecedor.BorderThickness.Top == 0d
-                && linhaFornecedor.BorderThickness.Right == 0d
-                && linhaFornecedor.BorderThickness.Bottom == 1d,
+            // A V11 envolve a linha original em um template que adiciona a lixeira.
+            // Validamos aqui a definição XAML da linha original, sem depender do template
+            // programático já composto em tempo de execução.
+            string xaml = File.ReadAllText("MainWindow.xaml");
+            int inicioLinha = xaml.IndexOf("x:Name=\"FornecedorBorder\"", StringComparison.Ordinal);
+            int fimLinha = inicioLinha >= 0
+                ? xaml.IndexOf("MouseLeftButtonDown=\"FornecedorItem_Click\"", inicioLinha, StringComparison.Ordinal)
+                : -1;
+            Assert(inicioLinha >= 0 && fimLinha > inicioLinha,
+                "a linha de fornecedor deve continuar identificada no XAML");
+
+            string definicaoLinha = xaml.Substring(inicioLinha, fimLinha - inicioLinha);
+            Assert(definicaoLinha.Contains("BorderThickness=\"0,0,0,1\"", StringComparison.Ordinal),
                 "cada fornecedor deve usar apenas um separador inferior, sem caixa roxa completa");
-            Assert(linhaFornecedor.BorderBrush is System.Windows.Media.SolidColorBrush separador
-                && separador.Color == corNeutra,
+            Assert(definicaoLinha.Contains("BorderBrush=\"{StaticResource BorderColor}\"", StringComparison.Ordinal),
                 "o separador da lista de fornecedores deve ser neutro");
         }
         finally
@@ -219,7 +224,11 @@ public static class UiCorrecoesTestes
                 .Select(item => item.Header?.ToString())
                 .ToArray();
 
-            Assert(cabecalhos.SequenceEqual(new[]
+            var cabecalhosBase = cabecalhos
+                .Where(titulo => !string.Equals(titulo, "Baixar Registro", StringComparison.Ordinal))
+                .ToArray();
+
+            Assert(cabecalhosBase.SequenceEqual(new[]
                 {
                     "Provisionar Pagamentos",
                     "Desprovisionar Pagamento",
@@ -228,7 +237,7 @@ public static class UiCorrecoesTestes
                     "Importar",
                     "Conferir Pagamentos"
                 }),
-                "o menu deve conter as quatro movimentações antes de Importar e Conferir Pagamentos");
+                "o menu deve preservar as movimentações da V10 antes de Importar e Conferir Pagamentos");
             Assert(!cabecalhos.Contains("Movimentar Registros"),
                 "Movimentar Registros não deve permanecer no menu");
 
