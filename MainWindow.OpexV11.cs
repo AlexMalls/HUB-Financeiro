@@ -14,8 +14,10 @@ public partial class MainWindow
 
     private bool _opexV11Configurado;
     private bool _fornecedoresV11ExclusaoVisualConfigurada;
+    private bool _fornecedoresV18LayoutPendente;
     private MenuItem? _itemBaixarRegistroOpexV11;
     private Fornecedor? _fornecedorFantasmaOpexV11;
+    private Style? _estiloBotaoExcluirFornecedorV18;
 
     private void ConfigurarOpexV11()
     {
@@ -253,12 +255,11 @@ public partial class MainWindow
         FornecedoresItemsControl.ItemContainerGenerator.StatusChanged -= FornecedoresItemsControl_StatusChangedV13;
         FornecedoresItemsControl.ItemContainerGenerator.StatusChanged += FornecedoresItemsControl_StatusChangedV13;
 
-        // A normalização permanece ativa e respeita a seleção atual.
-        // Selecionado = roxo; não selecionado = transparente.
-        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV17;
-        FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedV17;
+        FornecedoresItemsControl.PreviewMouseLeftButtonDown -= FornecedoresItemsControl_PreviewMouseLeftButtonDownV18;
+        FornecedoresItemsControl.PreviewMouseLeftButtonDown += FornecedoresItemsControl_PreviewMouseLeftButtonDownV18;
 
-        AplicarExclusaoIntegradaFornecedoresV13();
+        if (!AplicarExclusaoIntegradaFornecedoresV13())
+            AgendarUmaPassagemDeLayoutFornecedoresV18();
     }
 
     private void FornecedoresItemsControl_StatusChangedV13(object? sender, EventArgs e)
@@ -266,12 +267,39 @@ public partial class MainWindow
         if (FornecedoresItemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
             return;
 
+        if (!AplicarExclusaoIntegradaFornecedoresV13())
+            AgendarUmaPassagemDeLayoutFornecedoresV18();
+    }
+
+    private void AgendarUmaPassagemDeLayoutFornecedoresV18()
+    {
+        if (_fornecedoresV18LayoutPendente)
+            return;
+
+        _fornecedoresV18LayoutPendente = true;
+        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedUmaVezV18;
+        FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedUmaVezV18;
+    }
+
+    private void FornecedoresItemsControl_LayoutUpdatedUmaVezV18(object? sender, EventArgs e)
+    {
+        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedUmaVezV18;
+        _fornecedoresV18LayoutPendente = false;
         AplicarExclusaoIntegradaFornecedoresV13();
     }
 
-    private void FornecedoresItemsControl_LayoutUpdatedV17(object? sender, EventArgs e)
+    private void FornecedoresItemsControl_PreviewMouseLeftButtonDownV18(object sender, MouseButtonEventArgs e)
     {
-        AplicarExclusaoIntegradaFornecedoresV13();
+        var selecaoAnterior = _fornecedorItemSelecionado;
+
+        Dispatcher.BeginInvoke(
+            new Action(() =>
+            {
+                AtualizarEstadoVisualFornecedorV18(selecaoAnterior);
+                if (!ReferenceEquals(selecaoAnterior, _fornecedorItemSelecionado))
+                    AtualizarEstadoVisualFornecedorV18(_fornecedorItemSelecionado);
+            }),
+            DispatcherPriority.Background);
     }
 
     private bool AplicarExclusaoIntegradaFornecedoresV13()
@@ -301,19 +329,33 @@ public partial class MainWindow
         if (card == null)
             return false;
 
-        card.CornerRadius = new CornerRadius(10);
-        card.Padding = new Thickness(12, 8, 12, 8);
+        var cornerRadius = new CornerRadius(10);
+        if (card.CornerRadius != cornerRadius)
+            card.CornerRadius = cornerRadius;
 
-        bool selecionado = ReferenceEquals(card, _fornecedorItemSelecionado);
-        card.Background = selecionado
-            ? CriarBrushOpex("#5E17AA")
-            : Brushes.Transparent;
+        var padding = new Thickness(12, 8, 12, 8);
+        if (card.Padding != padding)
+            card.Padding = padding;
+
+        AtualizarEstadoVisualFornecedorV18(card);
 
         var corBordaNeutra = ((SolidColorBrush)FindResource("BorderColor")).Color;
-        card.BorderBrush = new SolidColorBrush(corBordaNeutra) { Opacity = 0 };
-        card.BorderThickness = new Thickness(0, 0, 0, 1);
-        card.SnapsToDevicePixels = false;
-        RenderOptions.SetEdgeMode(card, EdgeMode.Unspecified);
+        if (card.BorderBrush is not SolidColorBrush bordaAtual
+            || bordaAtual.Color != corBordaNeutra
+            || Math.Abs(bordaAtual.Opacity) > 0.0001)
+        {
+            card.BorderBrush = new SolidColorBrush(corBordaNeutra) { Opacity = 0 };
+        }
+
+        var espessuraBorda = new Thickness(0, 0, 0, 1);
+        if (card.BorderThickness != espessuraBorda)
+            card.BorderThickness = espessuraBorda;
+
+        if (card.SnapsToDevicePixels)
+            card.SnapsToDevicePixels = false;
+
+        if (RenderOptions.GetEdgeMode(card) != EdgeMode.Unspecified)
+            RenderOptions.SetEdgeMode(card, EdgeMode.Unspecified);
 
         var grid = card.Child as Grid;
         if (grid == null)
@@ -331,13 +373,14 @@ public partial class MainWindow
         var badgeStatus = grid.Children
             .OfType<Border>()
             .FirstOrDefault(item => Grid.GetColumn(item) == 1);
-        if (badgeStatus != null)
-            badgeStatus.Margin = new Thickness(12, 0, 8, 0);
+        var margemBadge = new Thickness(12, 0, 8, 0);
+        if (badgeStatus != null && badgeStatus.Margin != margemBadge)
+            badgeStatus.Margin = margemBadge;
 
         var botaoExcluir = new Button
         {
             ToolTip = "Excluir fornecedor",
-            Style = CriarEstiloBotaoExcluirFornecedorV13(),
+            Style = ObterEstiloBotaoExcluirFornecedorV18(),
             Foreground = CriarBrushOpex("#D56A6A"),
             Background = Brushes.Transparent,
             BorderBrush = Brushes.Transparent,
@@ -362,6 +405,31 @@ public partial class MainWindow
 
         return true;
     }
+
+    private void AtualizarEstadoVisualFornecedorV18(Border? card)
+    {
+        if (card == null)
+            return;
+
+        bool selecionado = ReferenceEquals(card, _fornecedorItemSelecionado);
+        if (selecionado)
+        {
+            var corSelecionada = Color.FromRgb(94, 23, 170);
+            if (card.Background is not SolidColorBrush fundoSelecionado
+                || fundoSelecionado.Color != corSelecionada
+                || Math.Abs(fundoSelecionado.Opacity - 1d) > 0.0001)
+            {
+                card.Background = new SolidColorBrush(corSelecionada);
+            }
+        }
+        else if (!ReferenceEquals(card.Background, Brushes.Transparent))
+        {
+            card.Background = Brushes.Transparent;
+        }
+    }
+
+    private Style ObterEstiloBotaoExcluirFornecedorV18()
+        => _estiloBotaoExcluirFornecedorV18 ??= CriarEstiloBotaoExcluirFornecedorV13();
 
     private static Style CriarEstiloBotaoExcluirFornecedorV13()
     {
