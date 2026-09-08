@@ -314,7 +314,7 @@ public partial class MainWindow
         // O próprio FornecedorBorder é a única superfície visual da linha.
         // Assim seleção, fundo e cantos incluem também a ação de exclusão.
         card.CornerRadius = new CornerRadius(10);
-        card.Padding = new Thickness(12, 8);
+        card.Padding = new Thickness(12, 8, 12, 8);
 
         var grid = card.Child as Grid;
         if (grid == null)
