@@ -49,6 +49,8 @@ public partial class MainWindow
             estilo);
         _itemBaixarRegistroOpexV11.IsEnabled = false;
 
+        // Mantém a baixa individual junto das movimentações financeiras,
+        // logo após Liquidar e antes do Relatório.
         int indice = Math.Min(3, _menuAcoesOpex.Items.Count);
         _menuAcoesOpex.Items.Insert(indice, _itemBaixarRegistroOpexV11);
 
@@ -124,6 +126,9 @@ public partial class MainWindow
 
     private void PagamentosItemsControl_PreviewMouseLeftButtonDownV11(object sender, MouseButtonEventArgs e)
     {
+        // A seleção original acontece no MouseLeftButtonDown da linha.
+        // Executamos depois do roteamento atual para complementar apenas os registros
+        // cujo fornecedor não existe na base permanente.
         Dispatcher.BeginInvoke(
             new Action(GarantirFornecedorFantasmaSelecionadoV11),
             DispatcherPriority.Background);
@@ -134,6 +139,7 @@ public partial class MainWindow
         if (_pagamentoSelecionado == null)
             return;
 
+        // Se a rotina original encontrou um fornecedor real, não interferimos.
         if (OpexFornecedorComboBox.SelectedItem is Fornecedor)
         {
             _fornecedorFantasmaOpexV11 = null;
@@ -232,6 +238,7 @@ public partial class MainWindow
             }
             catch
             {
+                // Alguns elementos de conteúdo não pertencem à VisualTree.
             }
 
             if (pai == null)
@@ -253,8 +260,8 @@ public partial class MainWindow
         FornecedoresItemsControl.ItemContainerGenerator.StatusChanged -= FornecedoresItemsControl_StatusChangedV13;
         FornecedoresItemsControl.ItemContainerGenerator.StatusChanged += FornecedoresItemsControl_StatusChangedV13;
 
-        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
-        FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedV13;
+        FornecedoresItemsControl.PreviewMouseLeftButtonDown -= FornecedoresItemsControl_PreviewMouseLeftButtonDownV17;
+        FornecedoresItemsControl.PreviewMouseLeftButtonDown += FornecedoresItemsControl_PreviewMouseLeftButtonDownV17;
 
         AplicarExclusaoIntegradaFornecedoresV13();
     }
@@ -264,14 +271,16 @@ public partial class MainWindow
         if (FornecedoresItemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
             return;
 
-        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
-        FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedV13;
         AplicarExclusaoIntegradaFornecedoresV13();
     }
 
-    private void FornecedoresItemsControl_LayoutUpdatedV13(object? sender, EventArgs e)
+    private void FornecedoresItemsControl_PreviewMouseLeftButtonDownV17(object sender, MouseButtonEventArgs e)
     {
-        AplicarExclusaoIntegradaFornecedoresV13();
+        // O handler original da linha atualiza _fornecedorItemSelecionado depois do Preview.
+        // Reaplica o estado visual no ciclo seguinte, já com a seleção definitiva.
+        Dispatcher.BeginInvoke(
+            new Action(AplicarExclusaoIntegradaFornecedoresV13),
+            DispatcherPriority.Input);
     }
 
     private bool AplicarExclusaoIntegradaFornecedoresV13()
@@ -301,10 +310,20 @@ public partial class MainWindow
         if (card == null)
             return false;
 
+        // O próprio FornecedorBorder é a única superfície visual da linha.
+        // Em repouso ele não deve desenhar um segundo bloco: herda visualmente o fundo da lista.
+        // Assim a diferença de cor some e o roxo da seleção cobre o card inteiro quando aplicado.
         card.CornerRadius = new CornerRadius(10);
         card.Padding = new Thickness(12, 8, 12, 8);
-        card.Background = Brushes.Transparent;
 
+        bool selecionado = ReferenceEquals(card, _fornecedorItemSelecionado);
+        card.Background = selecionado
+            ? CriarBrushOpex("#5E17AA")
+            : Brushes.Transparent;
+
+        // Mantém compatibilidade estrutural com a validação legada, mas sem desenhar
+        // qualquer linha entre fornecedores. A cor continua sendo a neutra esperada,
+        // porém com opacidade zero; visualmente não existe separador.
         var corBordaNeutra = ((SolidColorBrush)FindResource("BorderColor")).Color;
         card.BorderBrush = new SolidColorBrush(corBordaNeutra) { Opacity = 0 };
         card.BorderThickness = new Thickness(0, 0, 0, 1);
