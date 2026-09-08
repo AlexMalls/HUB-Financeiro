@@ -49,8 +49,6 @@ public partial class MainWindow
             estilo);
         _itemBaixarRegistroOpexV11.IsEnabled = false;
 
-        // Mantém a baixa individual junto das movimentações financeiras,
-        // logo após Liquidar e antes do Relatório.
         int indice = Math.Min(3, _menuAcoesOpex.Items.Count);
         _menuAcoesOpex.Items.Insert(indice, _itemBaixarRegistroOpexV11);
 
@@ -126,9 +124,6 @@ public partial class MainWindow
 
     private void PagamentosItemsControl_PreviewMouseLeftButtonDownV11(object sender, MouseButtonEventArgs e)
     {
-        // A seleção original acontece no MouseLeftButtonDown da linha.
-        // Executamos depois do roteamento atual para complementar apenas os registros
-        // cujo fornecedor não existe na base permanente.
         Dispatcher.BeginInvoke(
             new Action(GarantirFornecedorFantasmaSelecionadoV11),
             DispatcherPriority.Background);
@@ -139,7 +134,6 @@ public partial class MainWindow
         if (_pagamentoSelecionado == null)
             return;
 
-        // Se a rotina original encontrou um fornecedor real, não interferimos.
         if (OpexFornecedorComboBox.SelectedItem is Fornecedor)
         {
             _fornecedorFantasmaOpexV11 = null;
@@ -238,7 +232,6 @@ public partial class MainWindow
             }
             catch
             {
-                // Alguns elementos de conteúdo não pertencem à VisualTree.
             }
 
             if (pai == null)
@@ -271,8 +264,6 @@ public partial class MainWindow
         if (FornecedoresItemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
             return;
 
-        // A lista pode ser reconstruída ao carregar os dados ou ao pesquisar.
-        // Reativa uma passagem de layout para inserir a lixeira dentro do card novo.
         FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
         FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedV13;
         AplicarExclusaoIntegradaFornecedoresV13();
@@ -280,8 +271,7 @@ public partial class MainWindow
 
     private void FornecedoresItemsControl_LayoutUpdatedV13(object? sender, EventArgs e)
     {
-        if (AplicarExclusaoIntegradaFornecedoresV13())
-            FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
+        AplicarExclusaoIntegradaFornecedoresV13();
     }
 
     private bool AplicarExclusaoIntegradaFornecedoresV13()
@@ -311,10 +301,15 @@ public partial class MainWindow
         if (card == null)
             return false;
 
-        // O próprio FornecedorBorder é a única superfície visual da linha.
-        // Assim seleção, fundo e cantos incluem também a ação de exclusão.
         card.CornerRadius = new CornerRadius(10);
         card.Padding = new Thickness(12, 8, 12, 8);
+        card.Background = Brushes.Transparent;
+
+        var corBordaNeutra = ((SolidColorBrush)FindResource("BorderColor")).Color;
+        card.BorderBrush = new SolidColorBrush(corBordaNeutra) { Opacity = 0 };
+        card.BorderThickness = new Thickness(0, 0, 0, 1);
+        card.SnapsToDevicePixels = false;
+        RenderOptions.SetEdgeMode(card, EdgeMode.Unspecified);
 
         var grid = card.Child as Grid;
         if (grid == null)
