@@ -187,6 +187,16 @@ public static class UiCorrecoesOpexV12Testes
                 && selecionado.Color == (Color)ColorConverter.ConvertFromString("#5E17AA"),
                 "o fornecedor selecionado deve permanecer com o card inteiro roxo");
 
+            var fundoAntesDoLayout = card.Background;
+            var bordaAntesDoLayout = card.BorderBrush;
+
+            window.FornecedoresLayoutGrid.Margin = new Thickness(1, 0, 0, 0);
+            window.FornecedoresLayoutGrid.UpdateLayout();
+
+            Assert(ReferenceEquals(card.Background, fundoAntesDoLayout)
+                && ReferenceEquals(card.BorderBrush, bordaAntesDoLayout),
+                "uma atualização de layout sem mudança de seleção não deve recriar o visual de todos os fornecedores");
+
             campoSelecao.SetValue(window, null);
             metodoAplicar.Invoke(window, null);
 
@@ -223,6 +233,6 @@ public static class UiCorrecoesOpexV12Testes
     private static void Assert(bool condition, string scenario)
     {
         if (!condition)
-            throw new InvalidOperationException($"Falha no teste O.P.E.X. V17: {scenario}.");
+            throw new InvalidOperationException($"Falha no teste O.P.E.X. V18: {scenario}.");
     }
 }
