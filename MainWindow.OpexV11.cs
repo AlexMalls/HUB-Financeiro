@@ -255,48 +255,160 @@ public partial class MainWindow
         if (_fornecedoresV11ExclusaoVisualConfigurada)
             return;
 
-        var templateOriginal = FornecedoresItemsControl.ItemTemplate;
-        if (templateOriginal == null)
-            return;
-
         _fornecedoresV11ExclusaoVisualConfigurada = true;
 
-        var raiz = new FrameworkElementFactory(typeof(DockPanel));
-        raiz.SetValue(DockPanel.LastChildFillProperty, true);
-        raiz.SetValue(Panel.BackgroundProperty, CriarBrushOpex("#992A2A2D"));
-        raiz.SetValue(FrameworkElement.TagProperty, "FornecedorLinhaV12Surface");
+        FornecedoresItemsControl.ItemContainerGenerator.StatusChanged -= FornecedoresItemsControl_StatusChangedV13;
+        FornecedoresItemsControl.ItemContainerGenerator.StatusChanged += FornecedoresItemsControl_StatusChangedV13;
 
-        var botaoExcluir = new FrameworkElementFactory(typeof(Button));
-        botaoExcluir.SetValue(FrameworkElement.ToolTipProperty, "Excluir fornecedor");
-        botaoExcluir.SetValue(FrameworkElement.StyleProperty, (Style)FindResource("CnabActionIconButtonStyle"));
-        botaoExcluir.SetValue(Control.ForegroundProperty, CriarBrushOpex("#D56A6A"));
-        botaoExcluir.SetValue(Control.BackgroundProperty, Brushes.Transparent);
-        botaoExcluir.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        botaoExcluir.SetValue(FrameworkElement.MarginProperty, new Thickness(6, 0, 4, 0));
-        botaoExcluir.SetValue(UIElement.FocusableProperty, false);
-        botaoExcluir.SetValue(DockPanel.DockProperty, Dock.Right);
-        botaoExcluir.AddHandler(Button.ClickEvent, new RoutedEventHandler(BtnExcluirFornecedorLinhaV11_Click));
+        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
+        FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedV13;
 
-        var iconeExcluir = new FrameworkElementFactory(typeof(TextBlock));
-        iconeExcluir.SetValue(TextBlock.TextProperty, "\uE74D");
-        iconeExcluir.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Segoe MDL2 Assets"));
-        iconeExcluir.SetValue(TextBlock.FontSizeProperty, 17d);
-        iconeExcluir.SetValue(TextBlock.ForegroundProperty, CriarBrushOpex("#D56A6A"));
-        iconeExcluir.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        iconeExcluir.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        botaoExcluir.AppendChild(iconeExcluir);
-        raiz.AppendChild(botaoExcluir);
+        AplicarExclusaoIntegradaFornecedoresV13();
+    }
 
-        var conteudoOriginal = new FrameworkElementFactory(typeof(ContentPresenter));
-        conteudoOriginal.SetBinding(ContentPresenter.ContentProperty, new Binding());
-        conteudoOriginal.SetValue(ContentPresenter.ContentTemplateProperty, templateOriginal);
-        conteudoOriginal.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
-        raiz.AppendChild(conteudoOriginal);
+    private void FornecedoresItemsControl_StatusChangedV13(object? sender, EventArgs e)
+    {
+        if (FornecedoresItemsControl.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
+            return;
 
-        FornecedoresItemsControl.ItemTemplate = new DataTemplate(typeof(Fornecedor))
+        // A lista pode ser reconstruída ao carregar os dados ou ao pesquisar.
+        // Reativa uma passagem de layout para inserir a lixeira dentro do card novo.
+        FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
+        FornecedoresItemsControl.LayoutUpdated += FornecedoresItemsControl_LayoutUpdatedV13;
+        AplicarExclusaoIntegradaFornecedoresV13();
+    }
+
+    private void FornecedoresItemsControl_LayoutUpdatedV13(object? sender, EventArgs e)
+    {
+        if (AplicarExclusaoIntegradaFornecedoresV13())
+            FornecedoresItemsControl.LayoutUpdated -= FornecedoresItemsControl_LayoutUpdatedV13;
+    }
+
+    private bool AplicarExclusaoIntegradaFornecedoresV13()
+    {
+        bool todosIntegrados = true;
+
+        for (int i = 0; i < FornecedoresItemsControl.Items.Count; i++)
         {
-            VisualTree = raiz
+            if (FornecedoresItemsControl.ItemContainerGenerator.ContainerFromIndex(i) is not DependencyObject container)
+            {
+                todosIntegrados = false;
+                continue;
+            }
+
+            if (!IntegrarBotaoExcluirFornecedorV13(container))
+                todosIntegrados = false;
+        }
+
+        return todosIntegrados;
+    }
+
+    private bool IntegrarBotaoExcluirFornecedorV13(DependencyObject container)
+    {
+        var card = EncontrarDescendenteV13<Border>(
+            container,
+            border => string.Equals(border.Name, "FornecedorBorder", StringComparison.Ordinal));
+        if (card == null)
+            return false;
+
+        // O próprio FornecedorBorder é a única superfície visual da linha.
+        // Assim seleção, fundo e cantos incluem também a ação de exclusão.
+        card.CornerRadius = new CornerRadius(10);
+        card.Padding = new Thickness(12, 8);
+
+        var grid = card.Child as Grid;
+        if (grid == null)
+            return false;
+
+        var existente = EncontrarDescendenteV13<Button>(
+            card,
+            botao => string.Equals(botao.ToolTip?.ToString(), "Excluir fornecedor", StringComparison.Ordinal));
+        if (existente != null)
+            return true;
+
+        if (grid.ColumnDefinitions.Count < 3)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var badgeStatus = grid.Children
+            .OfType<Border>()
+            .FirstOrDefault(item => Grid.GetColumn(item) == 1);
+        if (badgeStatus != null)
+            badgeStatus.Margin = new Thickness(12, 0, 8, 0);
+
+        var botaoExcluir = new Button
+        {
+            ToolTip = "Excluir fornecedor",
+            Style = CriarEstiloBotaoExcluirFornecedorV13(),
+            Foreground = CriarBrushOpex("#D56A6A"),
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0),
+            Focusable = false,
+            DataContext = card.DataContext,
+            Content = new TextBlock
+            {
+                Text = "\uE74D",
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 17,
+                Foreground = CriarBrushOpex("#D56A6A"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
         };
+        botaoExcluir.Click += BtnExcluirFornecedorLinhaV11_Click;
+        Grid.SetColumn(botaoExcluir, 2);
+        grid.Children.Add(botaoExcluir);
+
+        return true;
+    }
+
+    private static Style CriarEstiloBotaoExcluirFornecedorV13()
+    {
+        var template = new ControlTemplate(typeof(Button));
+        var raiz = new FrameworkElementFactory(typeof(Border));
+        raiz.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        raiz.SetValue(Border.BorderBrushProperty, Brushes.Transparent);
+        raiz.SetValue(Border.BorderThicknessProperty, new Thickness(0));
+
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        raiz.AppendChild(presenter);
+        template.VisualTree = raiz;
+
+        var estilo = new Style(typeof(Button));
+        estilo.Setters.Add(new Setter(FrameworkElement.WidthProperty, 34d));
+        estilo.Setters.Add(new Setter(FrameworkElement.HeightProperty, 32d));
+        estilo.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+        estilo.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        estilo.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        estilo.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
+        estilo.Setters.Add(new Setter(Control.TemplateProperty, template));
+
+        var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter(UIElement.OpacityProperty, 0.72d));
+        estilo.Triggers.Add(hover);
+
+        return estilo;
+    }
+
+    private static T? EncontrarDescendenteV13<T>(DependencyObject raiz, Func<T, bool> predicado)
+        where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(raiz); i++)
+        {
+            var filho = VisualTreeHelper.GetChild(raiz, i);
+            if (filho is T alvo && predicado(alvo))
+                return alvo;
+
+            var encontrado = EncontrarDescendenteV13<T>(filho, predicado);
+            if (encontrado != null)
+                return encontrado;
+        }
+
+        return null;
     }
 
     private void BtnExcluirFornecedorLinhaV11_Click(object sender, RoutedEventArgs e)
