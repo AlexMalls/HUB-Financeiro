@@ -279,7 +279,7 @@ public partial class MainWindow
         // O handler original da linha atualiza _fornecedorItemSelecionado depois do Preview.
         // Reaplica o estado visual no ciclo seguinte, já com a seleção definitiva.
         Dispatcher.BeginInvoke(
-            new Action(AplicarExclusaoIntegradaFornecedoresV13),
+            new Action(() => AplicarExclusaoIntegradaFornecedoresV13()),
             DispatcherPriority.Input);
     }
 
