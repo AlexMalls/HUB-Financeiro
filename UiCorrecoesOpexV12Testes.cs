@@ -61,8 +61,8 @@ public static class UiCorrecoesOpexV12Testes
         {
             var fornecedor = new Fornecedor
             {
-                Nome = "Fornecedor visual V12",
-                Codigo = 120012,
+                Nome = "Fornecedor visual V13",
+                Codigo = 130013,
                 Ativo = true,
                 Administradora = true
             };
@@ -76,17 +76,24 @@ public static class UiCorrecoesOpexV12Testes
             var container = window.FornecedoresItemsControl.ItemContainerGenerator.ContainerFromIndex(0);
             Assert(container != null, "a lista de fornecedores deve gerar uma linha visual");
 
-            var superficie = EncontrarDescendentePorTag<Panel>(container!, "FornecedorLinhaV12Surface");
-            Assert(superficie != null,
-                "a linha inteira do fornecedor deve usar uma única superfície por trás do conteúdo e da lixeira");
+            var card = EncontrarDescendente<Border>(container!,
+                border => string.Equals(border.Name, "FornecedorBorder", StringComparison.Ordinal));
+            Assert(card != null, "cada fornecedor deve manter o card FornecedorBorder como superfície única");
+            Assert(card!.CornerRadius == new CornerRadius(10),
+                "o card do fornecedor deve ter os cantos arredondados do mock aprovado");
 
-            Assert(superficie!.Background is SolidColorBrush brush
-                && brush.Color == (Color)ColorConverter.ConvertFromString("#992A2A2D"),
-                "a área do fornecedor e a área da lixeira devem compartilhar exatamente o mesmo fundo");
-
-            var lixeira = EncontrarDescendente<Button>(container!,
+            var lixeiraDentroDoCard = EncontrarDescendente<Button>(card,
                 botao => string.Equals(botao.ToolTip?.ToString(), "Excluir fornecedor", StringComparison.Ordinal));
-            Assert(lixeira != null, "a lixeira do fornecedor deve continuar visível");
+            Assert(lixeiraDentroDoCard != null,
+                "a lixeira deve ficar dentro do mesmo card do fornecedor, e não em uma área lateral separada");
+
+            Assert(lixeiraDentroDoCard!.Background is SolidColorBrush fundoLixeira
+                && fundoLixeira.Color.A == 0,
+                "a lixeira não deve desenhar uma segunda superfície sobre o card do fornecedor");
+
+            var superficieLegada = EncontrarDescendentePorTag<Panel>(container!, "FornecedorLinhaV12Surface");
+            Assert(superficieLegada == null,
+                "a linha não deve manter a superfície lateral legada da V12");
         }
         finally
         {
