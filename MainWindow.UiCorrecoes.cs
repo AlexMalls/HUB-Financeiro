@@ -13,6 +13,7 @@ public partial class MainWindow
     {
         ConfigurarListaFornecedoresEmail();
         ConfigurarOpexV8();
+        ConfigurarOpexV11();
     }
 
     private void ConfigurarListaFornecedoresEmail()
