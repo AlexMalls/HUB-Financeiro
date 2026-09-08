@@ -43,6 +43,7 @@ public class Program
         {
             try
             {
+                UiCorrecoesOpexV11Testes.Executar();
                 UiCorrecoesOpexV10Testes.Executar();
                 UiCorrecoesOpexV9Testes.Executar();
                 UiCorrecoesTestes.Executar();
