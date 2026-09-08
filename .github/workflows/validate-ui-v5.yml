@@ -1,4 +1,4 @@
-name: Validate UI V12
+name: Validate UI V13
 
 on:
   pull_request:
@@ -25,20 +25,16 @@ jobs:
         shell: pwsh
         run: dotnet .\bin\Debug\net8.0-windows\HubFinanceiro.dll --validar-ajustes-ui
 
-      - name: Create lightweight V12 installer
+      - name: Create lightweight V13 installer
         shell: pwsh
         run: |
-          $dist = Join-Path $PWD 'dist-v12'
+          $dist = Join-Path $PWD 'dist-v13'
           $filesDir = Join-Path $dist 'arquivos'
           New-Item -ItemType Directory -Force -Path $filesDir | Out-Null
 
           $files = @(
-            'HubDatePicker.xaml',
-            'HubDatePicker.xaml.cs',
-            'BaixarRegistroWindow.xaml',
             'MainWindow.OpexV11.cs',
-            'UiCorrecoesOpexV12Testes.cs',
-            'Program.cs'
+            'UiCorrecoesOpexV12Testes.cs'
           )
 
           foreach ($file in $files) {
@@ -48,18 +44,18 @@ jobs:
           $installer = @'
           @echo off
           setlocal EnableExtensions EnableDelayedExpansion
-          title HUB Financeiro - Atualizacao V12
+          title HUB Financeiro - Atualizacao V13
 
           set "PROJECT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro"
           set "PACKAGE=%~dp0arquivos"
           set "APP=C:\Apps\HubFinanceiro\app"
           set "BACKUP_ROOT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro_Backups"
-          set "FILES=HubDatePicker.xaml HubDatePicker.xaml.cs BaixarRegistroWindow.xaml MainWindow.OpexV11.cs UiCorrecoesOpexV12Testes.cs Program.cs"
+          set "FILES=MainWindow.OpexV11.cs UiCorrecoesOpexV12Testes.cs"
           set "APP_EXISTED=0"
 
           echo.
           echo ========================================
-          echo   HUB FINANCEIRO - ATUALIZACAO V12
+          echo   HUB FINANCEIRO - ATUALIZACAO V13
           echo ========================================
           echo.
 
@@ -112,7 +108,7 @@ jobs:
 
           for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%I"
           if not defined STAMP set "STAMP=backup"
-          set "BACKUP=%BACKUP_ROOT%\Atualizacao_V12_%STAMP%"
+          set "BACKUP=%BACKUP_ROOT%\Atualizacao_V13_%STAMP%"
           set "BACKUP_SOURCE=%BACKUP%\source"
           set "BACKUP_APP=%BACKUP%\app"
 
@@ -137,7 +133,7 @@ jobs:
               if errorlevel 8 goto :backup_error
           )
 
-          echo [2/7] Instalando os arquivos V12...
+          echo [2/7] Instalando os arquivos V13...
           for %%F in (%FILES%) do (
               copy /Y "%PACKAGE%\%%F" "%PROJECT%\%%F" >NUL
               if errorlevel 1 goto :install_error
@@ -154,7 +150,7 @@ jobs:
           "%DOTNET%" restore HubFinanceiro.csproj
           if errorlevel 1 goto :build_error_popd
 
-          echo [5/7] Compilando e validando V12...
+          echo [5/7] Compilando e validando V13...
           "%DOTNET%" build HubFinanceiro.csproj --configuration Release --no-restore --nologo
           if errorlevel 1 goto :build_error_popd
 
@@ -177,7 +173,7 @@ jobs:
 
           echo.
           echo ========================================
-          echo   ATUALIZACAO V12 CONCLUIDA COM SUCESSO
+          echo   ATUALIZACAO V13 CONCLUIDA COM SUCESSO
           echo ========================================
           echo.
           echo Projeto: "%PROJECT%"
@@ -190,19 +186,19 @@ jobs:
           :build_error_popd
           popd
           echo.
-          echo ERRO: Falha ao compilar a atualizacao V12.
+          echo ERRO: Falha ao compilar a atualizacao V13.
           goto :rollback
 
           :test_error_popd
           popd
           echo.
-          echo ERRO: A validacao automatica da V12 falhou.
+          echo ERRO: A validacao automatica da V13 falhou.
           goto :rollback
 
           :publish_error_popd
           popd
           echo.
-          echo ERRO: Falha ao publicar a V12.
+          echo ERRO: Falha ao publicar a V13.
           goto :rollback
 
           :publish_error
@@ -212,7 +208,7 @@ jobs:
 
           :install_error
           echo.
-          echo ERRO: Falha ao copiar os arquivos da V12.
+          echo ERRO: Falha ao copiar os arquivos da V13.
           goto :rollback
 
           :backup_error
@@ -258,19 +254,23 @@ jobs:
           '@
 
           [System.IO.File]::WriteAllText(
-            (Join-Path $dist 'INSTALAR_UI_V12_LEVE.cmd'),
+            (Join-Path $dist 'INSTALAR_UI_V13_LEVE.cmd'),
             ($installer -replace "`n", "`r`n"),
             [System.Text.UTF8Encoding]::new($false))
 
           $readme = @'
-          HUB Financeiro - Atualizacao UI V12
+          HUB Financeiro - Atualizacao UI V13
 
           1. Extraia todo o ZIP.
           2. Feche o HUB Financeiro.
-          3. Execute INSTALAR_UI_V12_LEVE.cmd.
+          3. Execute INSTALAR_UI_V13_LEVE.cmd.
 
-          A V12 substitui o seletor de data nativo da baixa O.P.E.X. por um componente reutilizavel do HUB,
-          com calendario totalmente tematizado, e unifica o fundo visual da lista de fornecedores com a area da lixeira.
+          A V13 integra definitivamente a lixeira ao proprio card do fornecedor:
+          - fornecedor, status e exclusao usam uma unica superficie;
+          - a selecao roxa cobre o card inteiro, inclusive a area da lixeira;
+          - os cantos do card ficam arredondados conforme o mock aprovado;
+          - a lixeira nao cria fundo, faixa ou card separado.
+
           O instalador faz backup, build, testes, publicacao e rollback automatico em caso de falha.
           '@
           [System.IO.File]::WriteAllText(
@@ -278,10 +278,10 @@ jobs:
             ($readme -replace "`n", "`r`n"),
             [System.Text.UTF8Encoding]::new($false))
 
-      - name: Upload lightweight V12 package
+      - name: Upload lightweight V13 package
         uses: actions/upload-artifact@v4
         with:
-          name: HUB-Financeiro-UI-V12-Leve
-          path: dist-v12
+          name: HUB-Financeiro-UI-V13-Leve
+          path: dist-v13
           if-no-files-found: error
           retention-days: 7
