@@ -1,6 +1,7 @@
 <Window x:Class="HubFinanceiro.BaixarRegistroWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:HubFinanceiro"
         Title="Baixar Registro"
         Width="430"
         Height="250"
@@ -92,16 +93,8 @@
                            FontWeight="SemiBold"
                            Margin="0,0,0,8"/>
 
-                <DatePicker x:Name="DataBaixaDatePicker"
-                            Height="38"
-                            SelectedDateFormat="Short"
-                            FontSize="13"
-                            VerticalContentAlignment="Center"
-                            Background="{StaticResource BackgroundMedium}"
-                            Foreground="{StaticResource TextColor}"
-                            BorderBrush="{StaticResource BorderColor}"
-                            BorderThickness="1"
-                            Padding="10,0"/>
+                <local:HubDatePicker x:Name="DataBaixaDatePicker"
+                                     Height="38"/>
             </StackPanel>
 
             <StackPanel Grid.Row="2"
