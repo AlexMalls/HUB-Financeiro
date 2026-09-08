@@ -39,6 +39,7 @@ jobs:
             'BaixarRegistroWindow.xaml.cs',
             'UiCorrecoesOpexV11Testes.cs',
             'UiCorrecoesOpexV10Testes.cs',
+            'UiCorrecoesTestes.cs',
             'Program.cs'
           )
 
@@ -55,7 +56,7 @@ jobs:
           set "PACKAGE=%~dp0arquivos"
           set "APP=C:\Apps\HubFinanceiro\app"
           set "BACKUP_ROOT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro_Backups"
-          set "FILES=MainWindow.OpexV11.cs MainWindow.UiCorrecoes.cs BaixarRegistroWindow.xaml BaixarRegistroWindow.xaml.cs UiCorrecoesOpexV11Testes.cs UiCorrecoesOpexV10Testes.cs Program.cs"
+          set "FILES=MainWindow.OpexV11.cs MainWindow.UiCorrecoes.cs BaixarRegistroWindow.xaml BaixarRegistroWindow.xaml.cs UiCorrecoesOpexV11Testes.cs UiCorrecoesOpexV10Testes.cs UiCorrecoesTestes.cs Program.cs"
           set "APP_EXISTED=0"
 
           echo.
