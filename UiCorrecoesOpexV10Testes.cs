@@ -37,7 +37,7 @@ public static class UiCorrecoesOpexV10Testes
                 .Select(item => item.Header?.ToString() ?? string.Empty)
                 .ToArray();
 
-            var esperado = new[]
+            var esperadoV10 = new[]
             {
                 "Provisionar Pagamentos",
                 "Desprovisionar Pagamento",
@@ -47,10 +47,16 @@ public static class UiCorrecoesOpexV10Testes
                 "Conferir Pagamentos"
             };
 
-            Assert(titulos.SequenceEqual(esperado),
-                $"o menu deve conter exatamente as seis ações aprovadas na ordem correta. Atual: [{string.Join(" | ", titulos)}]");
+            // V11 acrescenta Baixar Registro, mas as seis ações aprovadas na V10
+            // precisam continuar presentes e na mesma ordem relativa.
+            var titulosV10 = titulos
+                .Where(titulo => !string.Equals(titulo, "Baixar Registro", StringComparison.Ordinal))
+                .ToArray();
+
+            Assert(titulosV10.SequenceEqual(esperadoV10),
+                $"as seis ações da V10 devem permanecer na ordem aprovada. Atual: [{string.Join(" | ", titulos)}]");
             Assert(!titulos.Contains("Movimentar Registros"),
-                "a opção Movimentar Registros deve ser removida do menu");
+                "a opção Movimentar Registros deve permanecer removida do menu");
         }
         finally
         {
