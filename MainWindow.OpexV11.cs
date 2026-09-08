@@ -97,8 +97,7 @@ public partial class MainWindow
                 return;
             }
 
-            pagamento.Status = "Pago";
-            pagamento.DataProvisionamento = janela.DataSelecionada.Date;
+            AplicarBaixaDiretaOpexV11(pagamento, janela.DataSelecionada);
 
             SalvarPrevisoes(pagamentos, caminhoArquivo);
             DesselecionarPagamento();
@@ -110,6 +109,13 @@ public partial class MainWindow
         {
             MostrarErro("Erro ao baixar registro", ex);
         }
+    }
+
+    internal static void AplicarBaixaDiretaOpexV11(PrevisaoPagamento pagamento, DateTime dataBaixa)
+    {
+        ArgumentNullException.ThrowIfNull(pagamento);
+        pagamento.Status = "Pago";
+        pagamento.DataProvisionamento = dataBaixa.Date;
     }
 
     private void ConfigurarFornecedorFantasmaOpexV11()
@@ -164,8 +170,10 @@ public partial class MainWindow
         AtualizarEstadoBotoes();
     }
 
-    private static Fornecedor CriarFornecedorFantasma(PrevisaoPagamento pagamento)
+    internal static Fornecedor CriarFornecedorFantasma(PrevisaoPagamento pagamento)
     {
+        ArgumentNullException.ThrowIfNull(pagamento);
+
         return new Fornecedor
         {
             Nome = pagamento.NomeFornecedor,
