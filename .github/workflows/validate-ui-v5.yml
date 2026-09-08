@@ -1,4 +1,4 @@
-name: Validate UI V5
+name: Validate UI V11
 
 on:
   pull_request:
@@ -25,21 +25,21 @@ jobs:
         shell: pwsh
         run: dotnet .\bin\Debug\net8.0-windows\HubFinanceiro.dll --validar-ajustes-ui
 
-      - name: Create lightweight V10 installer
+      - name: Create lightweight V11 installer
         shell: pwsh
         run: |
-          $dist = Join-Path $PWD 'dist-v10'
+          $dist = Join-Path $PWD 'dist-v11'
           $filesDir = Join-Path $dist 'arquivos'
           New-Item -ItemType Directory -Force -Path $filesDir | Out-Null
 
           $files = @(
-            'MainWindow.OpexV8.cs',
-            'FornecedorIdentidadeService.cs',
-            'MainWindow.FornecedoresV10.cs',
+            'MainWindow.OpexV11.cs',
+            'MainWindow.UiCorrecoes.cs',
+            'BaixarRegistroWindow.xaml',
+            'BaixarRegistroWindow.xaml.cs',
+            'UiCorrecoesOpexV11Testes.cs',
             'UiCorrecoesOpexV10Testes.cs',
-            'Program.cs',
-            'GlobalUsings.V10.cs',
-            'UiCorrecoesTestes.cs'
+            'Program.cs'
           )
 
           foreach ($file in $files) {
@@ -49,18 +49,18 @@ jobs:
           $installer = @'
           @echo off
           setlocal EnableExtensions EnableDelayedExpansion
-          title HUB Financeiro - Atualizacao V10
+          title HUB Financeiro - Atualizacao V11
 
           set "PROJECT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro"
           set "PACKAGE=%~dp0arquivos"
           set "APP=C:\Apps\HubFinanceiro\app"
           set "BACKUP_ROOT=C:\Users\Alexandre Mallorca\Documents\Projetos TI\HubFinanceiro_Backups"
-          set "FILES=MainWindow.OpexV8.cs FornecedorIdentidadeService.cs MainWindow.FornecedoresV10.cs UiCorrecoesOpexV10Testes.cs Program.cs GlobalUsings.V10.cs UiCorrecoesTestes.cs"
+          set "FILES=MainWindow.OpexV11.cs MainWindow.UiCorrecoes.cs BaixarRegistroWindow.xaml BaixarRegistroWindow.xaml.cs UiCorrecoesOpexV11Testes.cs UiCorrecoesOpexV10Testes.cs Program.cs"
           set "APP_EXISTED=0"
 
           echo.
           echo ========================================
-          echo   HUB FINANCEIRO - ATUALIZACAO V10
+          echo   HUB FINANCEIRO - ATUALIZACAO V11
           echo ========================================
           echo.
 
@@ -83,7 +83,7 @@ jobs:
 
           if not exist "%PACKAGE%\" (
               echo ERRO: Pasta de arquivos da atualizacao nao encontrada.
-              echo Extraia todo o ZIP antes de executar o instalador.
+              echo Extraia todo o ZIP antes de executar este instalador.
               echo.
               pause
               exit /b 1
@@ -113,7 +113,7 @@ jobs:
 
           for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%I"
           if not defined STAMP set "STAMP=backup"
-          set "BACKUP=%BACKUP_ROOT%\Atualizacao_V10_%STAMP%"
+          set "BACKUP=%BACKUP_ROOT%\Atualizacao_V11_%STAMP%"
           set "BACKUP_SOURCE=%BACKUP%\source"
           set "BACKUP_APP=%BACKUP%\app"
 
@@ -138,7 +138,7 @@ jobs:
               if errorlevel 8 goto :backup_error
           )
 
-          echo [2/7] Instalando os arquivos V10...
+          echo [2/7] Instalando os arquivos V11...
           for %%F in (%FILES%) do (
               copy /Y "%PACKAGE%\%%F" "%PROJECT%\%%F" >NUL
               if errorlevel 1 goto :install_error
@@ -155,7 +155,7 @@ jobs:
           "%DOTNET%" restore HubFinanceiro.csproj
           if errorlevel 1 goto :build_error_popd
 
-          echo [5/7] Compilando e validando V10...
+          echo [5/7] Compilando e validando V11...
           "%DOTNET%" build HubFinanceiro.csproj --configuration Release --no-restore --nologo
           if errorlevel 1 goto :build_error_popd
 
@@ -178,7 +178,7 @@ jobs:
 
           echo.
           echo ========================================
-          echo   ATUALIZACAO V10 CONCLUIDA COM SUCESSO
+          echo   ATUALIZACAO V11 CONCLUIDA COM SUCESSO
           echo ========================================
           echo.
           echo Projeto: "%PROJECT%"
@@ -191,19 +191,19 @@ jobs:
           :build_error_popd
           popd
           echo.
-          echo ERRO: Falha ao compilar a atualizacao V10.
+          echo ERRO: Falha ao compilar a atualizacao V11.
           goto :rollback
 
           :test_error_popd
           popd
           echo.
-          echo ERRO: A validacao automatica da V10 falhou.
+          echo ERRO: A validacao automatica da V11 falhou.
           goto :rollback
 
           :publish_error_popd
           popd
           echo.
-          echo ERRO: Falha ao publicar a V10.
+          echo ERRO: Falha ao publicar a V11.
           goto :rollback
 
           :publish_error
@@ -213,7 +213,7 @@ jobs:
 
           :install_error
           echo.
-          echo ERRO: Falha ao copiar os arquivos da V10.
+          echo ERRO: Falha ao copiar os arquivos da V11.
           goto :rollback
 
           :backup_error
@@ -259,18 +259,19 @@ jobs:
           '@
 
           [System.IO.File]::WriteAllText(
-            (Join-Path $dist 'INSTALAR_UI_V10_LEVE.cmd'),
+            (Join-Path $dist 'INSTALAR_UI_V11_LEVE.cmd'),
             ($installer -replace "`n", "`r`n"),
             [System.Text.UTF8Encoding]::new($false))
 
           $readme = @'
-          HUB Financeiro - Atualizacao UI V10
+          HUB Financeiro - Atualizacao UI V11
 
           1. Extraia todo o ZIP.
           2. Feche o HUB Financeiro.
-          3. Execute INSTALAR_UI_V10_LEVE.cmd.
+          3. Execute INSTALAR_UI_V11_LEVE.cmd.
 
-          A V10 atualiza o menu Acoes O.P.E.X. e permite fornecedores sem codigo visivel, usando uma identidade interna oculta de 9 digitos.
+          A V11 adiciona baixa direta de registros da O.P.E.X., edicao de registros com fornecedor temporario de lote,
+          desselecao ao clicar fora da edicao e exclusao visual de fornecedores.
           O instalador faz backup, build, testes, publicacao e rollback automatico em caso de falha.
           '@
           [System.IO.File]::WriteAllText(
@@ -278,10 +279,10 @@ jobs:
             ($readme -replace "`n", "`r`n"),
             [System.Text.UTF8Encoding]::new($false))
 
-      - name: Upload lightweight V10 package
+      - name: Upload lightweight V11 package
         uses: actions/upload-artifact@v4
         with:
-          name: HUB-Financeiro-UI-V10-Leve
-          path: dist-v10
+          name: HUB-Financeiro-UI-V11-Leve
+          path: dist-v11
           if-no-files-found: error
           retention-days: 7
