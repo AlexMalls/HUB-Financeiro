@@ -13,6 +13,7 @@ public static class UiCorrecoesOpexV12Testes
         DeveManterDataInicialEFormatacaoDoHub();
         DeveUsarUmaUnicaSuperficieNaLinhaDeFornecedor();
         DeveRemoverBordaEReaplicarEstadoNeutroDoCard();
+        DevePreservarRoxoNoFornecedorSelecionado();
     }
 
     private static void GarantirAplicacaoWpf()
@@ -143,6 +144,61 @@ public static class UiCorrecoesOpexV12Testes
         }
     }
 
+    private static void DevePreservarRoxoNoFornecedorSelecionado()
+    {
+        var window = new MainWindow();
+        try
+        {
+            var fornecedor = new Fornecedor
+            {
+                Nome = "Fornecedor visual V17",
+                Codigo = 170017,
+                Ativo = true,
+                Administradora = true
+            };
+
+            window.FornecedoresLayoutGrid.Visibility = Visibility.Visible;
+            window.FornecedoresItemsControl.ItemsSource = new[] { fornecedor };
+            window.FornecedoresLayoutGrid.Measure(new Size(1000, 650));
+            window.FornecedoresLayoutGrid.Arrange(new Rect(0, 0, 1000, 650));
+            window.FornecedoresLayoutGrid.UpdateLayout();
+
+            var container = window.FornecedoresItemsControl.ItemContainerGenerator.ContainerFromIndex(0);
+            Assert(container != null, "a lista deve gerar o fornecedor usado no teste de seleção");
+
+            var card = EncontrarDescendente<Border>(container!,
+                border => string.Equals(border.Name, "FornecedorBorder", StringComparison.Ordinal));
+            Assert(card != null, "o card deve existir para validar a seleção roxa");
+
+            var campoSelecao = typeof(MainWindow).GetField(
+                "_fornecedorItemSelecionado",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var metodoAplicar = typeof(MainWindow).GetMethod(
+                "AplicarExclusaoIntegradaFornecedoresV13",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert(campoSelecao != null && metodoAplicar != null,
+                "a V17 deve sincronizar o estado visual com a seleção atual");
+
+            campoSelecao!.SetValue(window, card);
+            metodoAplicar!.Invoke(window, null);
+
+            Assert(card!.Background is SolidColorBrush selecionado
+                && selecionado.Color == (Color)ColorConverter.ConvertFromString("#5E17AA"),
+                "o fornecedor selecionado deve permanecer com o card inteiro roxo");
+
+            campoSelecao.SetValue(window, null);
+            metodoAplicar.Invoke(window, null);
+
+            Assert(card.Background is SolidColorBrush neutro && neutro.Color.A == 0,
+                "ao deselecionar o fornecedor o card deve voltar ao fundo transparente");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     private static T? EncontrarDescendentePorTag<T>(DependencyObject raiz, object tag)
         where T : FrameworkElement
         => EncontrarDescendente<T>(raiz, elemento => Equals(elemento.Tag, tag));
@@ -167,6 +223,6 @@ public static class UiCorrecoesOpexV12Testes
     private static void Assert(bool condition, string scenario)
     {
         if (!condition)
-            throw new InvalidOperationException($"Falha no teste O.P.E.X. V16: {scenario}.");
+            throw new InvalidOperationException($"Falha no teste O.P.E.X. V17: {scenario}.");
     }
 }
