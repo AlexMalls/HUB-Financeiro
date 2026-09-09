@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     // FileSystemWatcher para monitorar mudanças nos arquivos JSON
     private FileSystemWatcher? _fornecedoresWatcher;
     private FileSystemWatcher? _pagamentosWatcher;
+    private DateTime _ignorarWatcherPagamentosAteV22 = DateTime.MinValue;
     private static readonly object _fileLock = new object(); // Lock para evitar conflitos de escrita
     private bool _isFormattingDate = false; // Flag para formatação de data
     
@@ -214,6 +215,20 @@ public partial class MainWindow : Window
     /// <summary>
     /// Recarrega apenas as previsões de pagamento (chamado após provisionamento)
     /// </summary>
+    private List<PrevisaoPagamento> FiltrarPagamentosOpexV22(IEnumerable<PrevisaoPagamento> previsoes)
+    {
+        IEnumerable<PrevisaoPagamento> filtradas = previsoes;
+
+        if (MostrarPagosCheckBox?.IsChecked != true)
+            filtradas = filtradas.Where(p => p.Status != "Pago");
+
+        if (SomenteAdmCheckBox?.IsChecked == true)
+            filtradas = filtradas.Where(p => p.Empresa == "ADM");
+        else if (SomenteCorCheckBox?.IsChecked == true)
+            filtradas = filtradas.Where(p => p.Empresa == "COR");
+
+        return filtradas.OrderBy(p => p.DataPagamento).ToList();
+    }
     public void RecarregarPagamentos()
     {
         try
@@ -240,8 +255,7 @@ public partial class MainWindow : Window
             }
             // Se nenhuma estiver marcada, mostra todos
             
-            _previsoesPagamento = previsoes.OrderBy(p => p.DataPagamento).ToList();
-            PagamentosItemsControl.ItemsSource = null;
+            _previsoesPagamento = FiltrarPagamentosOpexV22(previsoes);
             PagamentosItemsControl.ItemsSource = _previsoesPagamento;
             
             // Restaura a seleção visual se o pagamento ainda existir na lista
@@ -2839,11 +2853,11 @@ public partial class MainWindow : Window
             pagamentos.Add(novoPagamento);
 
             // Salva no arquivo
+            _ignorarWatcherPagamentosAteV22 = DateTime.UtcNow.AddMilliseconds(500);
             SalvarPrevisoes(pagamentos, caminhoArquivo);
 
             // Atualiza a interface
-            _previsoesPagamento = pagamentos.OrderBy(p => p.DataPagamento).ToList();
-            PagamentosItemsControl.ItemsSource = null;
+            _previsoesPagamento = FiltrarPagamentosOpexV22(pagamentos);
             PagamentosItemsControl.ItemsSource = _previsoesPagamento;
 
             // Limpa os campos
@@ -2889,11 +2903,11 @@ public partial class MainWindow : Window
             pagamento.Empresa = empresa;
 
             // Salva no arquivo
+            _ignorarWatcherPagamentosAteV22 = DateTime.UtcNow.AddMilliseconds(500);
             SalvarPrevisoes(pagamentos, caminhoArquivo);
 
             // Atualiza a interface
-            _previsoesPagamento = pagamentos.OrderBy(p => p.DataPagamento).ToList();
-            PagamentosItemsControl.ItemsSource = null;
+            _previsoesPagamento = FiltrarPagamentosOpexV22(pagamentos);
             PagamentosItemsControl.ItemsSource = _previsoesPagamento;
 
             // Limpa a seleção
@@ -2933,11 +2947,11 @@ public partial class MainWindow : Window
             pagamentos.RemoveAll(p => p.Id == _pagamentoSelecionado.Id);
 
             // Salva no arquivo
+            _ignorarWatcherPagamentosAteV22 = DateTime.UtcNow.AddMilliseconds(500);
             SalvarPrevisoes(pagamentos, caminhoArquivo);
 
             // Atualiza a interface
-            _previsoesPagamento = pagamentos.OrderBy(p => p.DataPagamento).ToList();
-            PagamentosItemsControl.ItemsSource = null;
+            _previsoesPagamento = FiltrarPagamentosOpexV22(pagamentos);
             PagamentosItemsControl.ItemsSource = _previsoesPagamento;
 
             // Limpa a seleção
@@ -3197,11 +3211,11 @@ public partial class MainWindow : Window
             };
 
             previsoes.Add(novo);
+            _ignorarWatcherPagamentosAteV22 = DateTime.UtcNow.AddMilliseconds(500);
             SalvarPrevisoes(previsoes, caminhoJson);
 
             // Atualiza a lista em memória e a UI (mesmo padrão do ImportarLotePagamentos)
-            _previsoesPagamento = previsoes.OrderBy(p => p.DataPagamento).ToList();
-            PagamentosItemsControl.ItemsSource = null;
+            _previsoesPagamento = FiltrarPagamentosOpexV22(previsoes);
             PagamentosItemsControl.ItemsSource = _previsoesPagamento;
             DesselecionarPagamento();
 
@@ -3585,10 +3599,10 @@ public partial class MainWindow : Window
 
             // ── Salva e atualiza a interface ──────────────────────────────────
             pagamentosExistentes.AddRange(novos);
+            _ignorarWatcherPagamentosAteV22 = DateTime.UtcNow.AddMilliseconds(500);
             SalvarPrevisoes(pagamentosExistentes, caminhoJson);
 
-            _previsoesPagamento = pagamentosExistentes.OrderBy(p => p.DataPagamento).ToList();
-            PagamentosItemsControl.ItemsSource = null;
+            _previsoesPagamento = FiltrarPagamentosOpexV22(pagamentosExistentes);
             PagamentosItemsControl.ItemsSource = _previsoesPagamento;
 
             DesselecionarPagamento();
@@ -3836,6 +3850,9 @@ public partial class MainWindow : Window
             
             _pagamentosWatcher.Changed += (s, e) =>
             {
+                if (DateTime.UtcNow <= _ignorarWatcherPagamentosAteV22)
+                    return;
+
                 // Aguarda um pouco para garantir que o arquivo foi salvo completamente
                 System.Threading.Thread.Sleep(100);
                 
