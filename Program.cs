@@ -43,6 +43,10 @@ public class Program
         {
             try
             {
+                UiCorrecoesOpexV12Testes.Executar();
+                UiCorrecoesOpexV11Testes.Executar();
+                UiCorrecoesOpexV10Testes.Executar();
+                UiCorrecoesOpexV9Testes.Executar();
                 UiCorrecoesTestes.Executar();
                 Environment.ExitCode = 0;
             }
