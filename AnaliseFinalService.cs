@@ -381,7 +381,7 @@ public sealed class AnaliseFinalService
                 OrigemOver = item.OrigemOver,
                 ComparacaoPrincipal = item,
                 ContextoTemporal = contexto,
-                RegrasTestadas = regras,
+                RegrasTestadas = AnaliseFaturasV28Identidade.ObterAuditoria(overMesPassado, item).Concat(regras).ToList(),
                 ComponentesFatura = componentesFatura,
                 LancamentosFaturaInvestigacao = lancamentosFaturaInvestigacao,
                 ComponentesOver = componentesOver,
@@ -739,7 +739,7 @@ public sealed class AnaliseFinalService
 
         return over.Lancamentos
             .Where(x => string.Equals(
-                AnaliseFaturasNormalizador.ExtrairCertificadoDoCartaoOver(x.Cartao) ?? string.Empty,
+                AnaliseFaturasV28Identidade.ObterCertificado(x) ?? string.Empty,
                 cert,
                 StringComparison.OrdinalIgnoreCase))
             .Where(x => string.IsNullOrWhiteSpace(nome) ||

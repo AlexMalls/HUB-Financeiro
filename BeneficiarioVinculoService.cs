@@ -337,7 +337,7 @@ public sealed class BeneficiarioVinculoService
             .Select(x => new
             {
                 Lancamento = x,
-                Certificado = AnaliseFaturasNormalizador.ExtrairCertificadoDoCartaoOver(x.Cartao) ?? string.Empty,
+                Certificado = AnaliseFaturasV28Identidade.ObterCertificado(x) ?? string.Empty,
                 NomeNormalizado = AnaliseFaturasNormalizador.NormalizarNome(x.Beneficiario),
                 MatriculaNormalizada = Compactar(x.Matricula),
                 EntidadeNormalizada = Compactar(x.Entidade),

@@ -762,6 +762,7 @@ public partial class IncluirAnaliseFaturaWindow : Window
 
                 var parserOver = new OverParser();
                 OverArquivo over = parserOver.Ler(_relatorioOver);
+                AnaliseFaturasV28Identidade.Conciliar(faturasPassado, over, ignorarCoparticipacao, ignorarCompetenciasAnteriores);
 
                 var vinculoService = new BeneficiarioVinculoService();
                 VinculoBeneficiariosDiagnostico vinculos = vinculoService.CriarDiagnostico(faturasPassado, over);
@@ -840,6 +841,7 @@ public partial class IncluirAnaliseFaturaWindow : Window
 
             var parserOver = new OverParser();
             OverArquivo over = parserOver.Ler(_relatorioOver!);
+            AnaliseFaturasV28Identidade.Conciliar(faturasPassado, over, ignorarCoparticipacao, ignorarCompetenciasAnteriores);
 
             var consolidacaoService = new LancamentosConsolidacaoService();
             LancamentosConsolidacaoDiagnostico consolidacao = consolidacaoService.CriarDiagnostico(

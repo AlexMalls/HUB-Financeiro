@@ -134,7 +134,7 @@ public sealed class AnaliseFaturasExcelExporter
             string nomeTipo = LimparNomeArquivo(tipoApresentacao);
             string caminho = Path.Combine(pastaDestino, $"{indice:00} - {nomeTipo}.xlsx");
 
-            CriarWorkbook(caminho, diagnostico, tipoApresentacao, itens);
+            AnaliseFaturasExcelFichasV31.CriarWorkbook(caminho, diagnostico, tipoApresentacao, itens);
             relatorios.Add(new AnaliseFaturasExcelRelatorio
             {
                 TipoDivergencia = grupo.Key,
